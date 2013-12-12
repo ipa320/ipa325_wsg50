@@ -1,0 +1,11 @@
+#goal definition
+int32 scheme
+---
+#result definition
+int32 error_code
+int32 SUCCESSFUL = 0
+int32 CONNECTION_FAILED = -1
+---
+#feedback
+Header header
+trajectory_msgs/JointTrajectoryPoint actual

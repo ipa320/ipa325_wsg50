@@ -15,6 +15,8 @@
 #include <actionlib/server/simple_action_server.h>
 #include <ipa325_wsg50/WSG50HomingAction.h>
 #include <ipa325_wsg50/WSG50PrePositionFingersAction.h>
+#include <ipa325_wsg50/WSG50GraspPartAction.h>
+#include <ipa325_wsg50/WSG50ReleasePartAction.h>
 
 // Services
 //
@@ -240,6 +242,122 @@ public:
 };
 
 
+/*
+ * Grasping Part Action
+ * (for more detailed comments have a look at preposition fingers class or homing class)
+ */
+class WSG50GraspPartActionServer : public WSG50RosObserver
+{
+protected:
+    ros::NodeHandle nh_;
+    actionlib::SimpleActionServer<ipa325_wsg50::WSG50GraspPartAction> gpserver_;
+    std::string action_name;
+    ipa325_wsg50::WSG50GraspPartFeedback fb_;
+    ipa325_wsg50::WSG50GraspPartResult res_;
+    float width_, speed_;
+public:
+    WSG50GraspPartActionServer(std::string name) : gpserver_(nh_, name, false), action_name(name) {
+        gpserver_.registerGoalCallback(boost::bind(&WSG50GraspPartActionServer::doGrasp, this));
+        _controller->Attach(this,0x25);
+        gpserver_.start();
+    }
+
+    ~WSG50GraspPartActionServer() {_controller->Detach(this, 0x25);}
+
+    void doGrasp()
+    {
+        ipa325_wsg50::WSG50GraspPartGoalConstPtr goal = gpserver_.acceptNewGoal();
+        width_ = goal->width;
+        speed_ = goal->speed;
+        if(DEBUG) ROS_INFO("Grasp Part Action called with following params: width = %f, speed = %f", width_, speed_);
+        _controller->Attach(this, 0x43);
+        _controller->grasp(width_, speed_);
+    }
+
+    void update(TRESPONSE *response)
+    {
+        if(response->id==0x25) {        // send result response
+            res_.status_code=response->status_code;
+            if(response->status_code==E_ACCESS_DENIED ||
+                    response->status_code==E_ALREADY_RUNNING ||
+                    response->status_code==E_CMD_FORMAT_ERROR ||
+                    response->status_code==E_RANGE_ERROR ||
+                    response->status_code==E_CMD_ABORTED ||
+                    response->status_code==E_CMD_FAILED ||
+                    response->status_code==E_TIMEOUT) {
+                gpserver_.setAborted(res_);
+            } else if(response->status_code==E_SUCCESS) {
+                gpserver_.setSucceeded(res_);
+            }
+            _controller->Detach(this, 0x43);
+        } else if(response->id==0x43) { // send feedback response
+            fb_.force=_controller->getForce();
+            fb_.speed=_controller->getSpeed();
+            fb_.width=_controller->getWidth();
+            gpserver_.publishFeedback(fb_);
+        }
+    }
+};
+
+
+
+/*
+ * Releasing Part Action
+ * (for more detailed comments have a look at preposition fingers class or homing class)
+ */
+class WSG50ReleasePartActionServer : public WSG50RosObserver
+{
+protected:
+    ros::NodeHandle nh_;
+    actionlib::SimpleActionServer<ipa325_wsg50::WSG50ReleasePartAction> rpserver_;
+    std::string action_name;
+    ipa325_wsg50::WSG50ReleasePartFeedback fb_;
+    ipa325_wsg50::WSG50ReleasePartResult res_;
+    float width_, speed_;
+public:
+    WSG50ReleasePartActionServer(std::string name) : rpserver_(nh_, name, false), action_name(name) {
+        rpserver_.registerGoalCallback(boost::bind(&WSG50ReleasePartActionServer::doRelease, this));
+        _controller->Attach(this,0x26);
+        rpserver_.start();
+    }
+
+    ~WSG50ReleasePartActionServer() {_controller->Detach(this, 0x26);}
+
+    void doRelease()
+    {
+        ipa325_wsg50::WSG50ReleasePartGoalConstPtr goal = rpserver_.acceptNewGoal();
+        width_ = goal->openwidth;
+        speed_ = goal->speed;
+        if(DEBUG) ROS_INFO("Release Part Action called with following params: width = %f, speed = %f", width_, speed_);
+        _controller->Attach(this, 0x43);
+        _controller->release(width_, speed_);
+    }
+
+    void update(TRESPONSE *response)
+    {
+        if(response->id==0x26) {        // send result response
+            res_.status_code=response->status_code;
+            if(response->status_code==E_ACCESS_DENIED ||
+                    response->status_code==E_ALREADY_RUNNING ||
+                    response->status_code==E_CMD_FORMAT_ERROR ||
+                    response->status_code==E_RANGE_ERROR ||
+                    response->status_code==E_CMD_ABORTED ||
+                    response->status_code==E_TIMEOUT) {
+                rpserver_.setAborted(res_);
+            } else if(response->status_code==E_SUCCESS) {
+                rpserver_.setSucceeded(res_);
+            }
+            _controller->Detach(this, 0x43);
+        } else if(response->id==0x43) { // send feedback response
+            fb_.force=_controller->getForce();
+            fb_.speed=_controller->getSpeed();
+            fb_.width=_controller->getWidth();
+            rpserver_.publishFeedback(fb_);
+        }
+    }
+};
+
+
 
 /*
  *  runs a loop to publish gripper states in ROS
@@ -257,12 +375,12 @@ void publishStates()
     // set update cycle
     //
     short updatePeriodInMs = 20;
-    _controller->getOpeningWidthUpdates(false, true, updatePeriodInMs);
-    if(!ready(TIMEOUT)) ROS_ERROR("timout occured while setting update rate for opening width");
-    _controller->getSpeedUpdates(false, true, updatePeriodInMs);
-    if(!ready(TIMEOUT)) ROS_ERROR("timeout occured while setting update rate for speed");
-    _controller->getForceUpdates(false, true, updatePeriodInMs);
-    if(!ready(TIMEOUT)) ROS_ERROR("timeout occured while setting update rate for force");
+//    _controller->getOpeningWidthUpdates(false, true, updatePeriodInMs);
+//    if(!ready(TIMEOUT)) ROS_ERROR("timout occured while setting update rate for opening width");
+//    _controller->getSpeedUpdates(false, true, updatePeriodInMs);
+//    if(!ready(TIMEOUT)) ROS_ERROR("timeout occured while setting update rate for speed");
+//    _controller->getForceUpdates(false, true, updatePeriodInMs);
+//    if(!ready(TIMEOUT)) ROS_ERROR("timeout occured while setting update rate for force");
 
 
     // start publishing loop
@@ -333,6 +451,8 @@ int main(int argc, char** argv)
     //WSG50HomingAction homing(ros::this_node::getName());
     WSG50HomingAction homing("WSG50Gripper_Homing");
     WSG50PrePositionFingersActionServer prepFingers("WSG50Gripper_PrePositionFingers");
+    WSG50GraspPartActionServer gpserver("WSG50Gripper_GraspPartAction");
+    WSG50ReleasePartActionServer rpserver("WSG50Gripper_ReleasePartAction");
 
 
     // spin and send messages

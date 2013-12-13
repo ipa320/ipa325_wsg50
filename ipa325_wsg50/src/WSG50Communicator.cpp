@@ -8,7 +8,7 @@
 #include <boost/thread/mutex.hpp>
 
 
-#define DEBUG false
+#define DEBUG true
 
 #ifndef SER_MSG_NUM_HEADER_BYTES
 #define SER_MSG_NUM_HEADER_BYTES    3       //!< number of header bytes
@@ -255,7 +255,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
         if(responseMsg.status_code != E_SUCCESS) {
             printErrorCode(responseMsg.status_code);
         } else {
-            if(DEBUG) ROS_INFO("read_handler: message read; status code = E_SUCCESS.");
+            if(DEBUG) ROS_INFO("read_handler: message read; status code = E_SUCCESS. MsgId = 0x%02X", responseMsg.id);
         }
 
         // if msg command id was 0x07 (disconnect message), then stop io_service

@@ -182,7 +182,8 @@ public:
     SSTATE  getSystemState(bool updateOnChangeOnly,
                            bool enableAutoUpdate,
                            short updatePeriodInMillisec);
-    int     getGraspingState(bool updateOnChangeOnly,
+    int     getGraspingState(void);
+    void    getGraspingStateUpdates(bool updateOnChangeOnly,
                              bool enableAutoUpdate,
                              short updatePeriodInMillisec);
     void    getOpeningWidthUpdates(bool updateOnChangeOnly, // 1 = yes; 0 = update always
@@ -219,6 +220,8 @@ private:
 
     // variables
     //
+    int         _currentGraspingState;
+
     float       _MaxWidth,      // mm
                 _MinWidth,
                 _MaxSpeed,
@@ -251,7 +254,8 @@ private:
                 _ready,
                 _widthAutoUpdate,
                 _speedAutoUpdate,
-                _forceAutoUpdate;
+                _forceAutoUpdate,
+                _graspingStateAutoUpdates;
     unsigned char * _LoopTestData;
     unsigned char * _dat;
     int         _LoopTestDataLength;
@@ -261,7 +265,8 @@ private:
     boost::mutex    _msgMutex,
                     _currentForceMutex,
                     _currentSpeedMutex,
-                    _currentWidthMutex;
+                    _currentWidthMutex,
+                    _currentGraspingStateMutex;
 
     // run State-Machine
     //

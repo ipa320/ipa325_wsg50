@@ -1065,9 +1065,11 @@ void WSG50Controller::grasp(float width, float speed)
 
 void WSG50Controller::release(float openWidth, float speed)
 {
-    int i;
+    int i, graspingState;
     unsigned char data[8];
     unsigned char tmpFloat[4];
+
+    if(DEBUG) ROS_INFO("\n\n##########################\n##  Release Part...\n##########################");
 
     // check if ready
     //
@@ -1078,6 +1080,17 @@ void WSG50Controller::release(float openWidth, float speed)
     // prevent from sending other messages
     //
     _ready = false;
+
+    // check Gripper State
+    //
+    graspingState = getGraspingState();
+    if(graspingState != 2           // no part found
+            || graspingState != 4   // holding
+            || graspingState != 3)  // part lost
+    {
+        ROS_ERROR("Wrong grasping state, can't release part! \nCurrent grasping state is: %d", graspingState);
+        return;
+    }
 
     // check max and min values
     //
@@ -1865,13 +1878,96 @@ SSTATE WSG50Controller::getSystemState(bool updateOnChangeOnly,
     return _systemState;
 }
 
-
-
-int WSG50Controller::getGraspingState(bool updateOnChangeOnly,
-                                      bool enableAutoUpdate,
-                                      short updatePeriodInMillisec)
+/*
+ * @return:
+ *  0 = Idle
+ *  1 = Grasping
+ *  2 = No Part Found
+ *  3 = Part lost
+ *  4 = Holding
+ *  5 = Releasing
+ *  6 = Positioning
+ *  7 = Error
+ *  every thing else = researved
+ */
+int WSG50Controller::getGraspingState()
 {
+    int gstate;
+    short t = 0;
+    if(!_graspingStateAutoUpdates) {
+        getGraspingStateUpdates(false, false, t);
+        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    }
+    _currentGraspingStateMutex.lock();
+    gstate = _currentGraspingState;
+    _currentGraspingStateMutex.unlock();
+    if(DEBUG) ROS_INFO("Grasping state is: %d", gstate);
+    return gstate;
+}
 
 
-    return 1;
+void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
+                                              bool automaticUpdatesEnabled,
+                                              short updatePeriodInMillisec)
+{
+    if(DEBUG) ROS_INFO("Set auto-updates for grasping state!");
+
+    // delete &_msg;
+    unsigned char dat[3];
+    unsigned char period[2];
+
+    // check if ready
+    //
+    if(!_ready) {
+        ROS_ERROR("Gripper is not ready to receive another command!");
+        return;
+    }
+    // prevent from sending other messages
+    //
+    _ready = false;
+
+    // set Data array
+    //
+    memcpy(&period, &updatePeriodInMillisec, sizeof(short));
+    dat[1] = period[0];     // remember little endian!
+    dat[2] = period[1];
+
+    // set all values to zero
+    dat[0] = 0x00;
+    // bit 0: autoupdate
+    if(automaticUpdatesEnabled) {
+        dat[0] |= 1 << 0; // bitwise OR operation. True at position 0
+    } else {
+        dat[0] &= ~(1 << 0);    // bitwise AND operation, negated values. Set to False at position 0
+    }
+    // bit 1: update on changes only, or always
+    if(updateOnChangeOnly) {
+        dat[0] |= 1 << 1;       // true on position 1
+    } else {
+        dat[0] &= ~(1 << 1);    // false on position 1
+    }
+
+    // lock msg access
+    //
+    _msgMutex.lock();
+
+    // create message
+    //
+    _msg.id = _GETWIDTH;
+    _msg.length = 3;
+    _msg.data = dat;
+
+    // write message
+    //
+    _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
+
+    // set flag for auto-update == true or false
+    //
+    if(automaticUpdatesEnabled) {
+        _graspingStateAutoUpdates = true;
+    } else
+        _graspingStateAutoUpdates = false;
 }

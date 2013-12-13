@@ -16,6 +16,8 @@
 
 #include <ipa325_wsg50/WSG50HomingAction.h>
 #include <ipa325_wsg50/WSG50PrePositionFingersAction.h>
+#include <ipa325_wsg50/WSG50GraspPartAction.h>
+#include <ipa325_wsg50/WSG50ReleasePartAction.h>
 
 // include services
 //
@@ -147,8 +149,10 @@ int main(int argc, char **argv)
         actionlib::SimpleClientGoalState state = homingclient.getState();
         ROS_INFO("Action finished: %s", state.toString().c_str());
     }
-    else
+    else {
         ROS_INFO("Homing-Action did not finish before the time out.");
+        return 1;
+    }
 #endif
 
 #if 1
@@ -171,30 +175,53 @@ int main(int argc, char **argv)
     goal2.speed = 50.0;
     prepositionclient_.sendGoal(goal2, &prepFingersDoneCB, &prepFingersActiveCB, &prepFingersFeedbackCB);
 
-    // wait for result or timeout
-//    bool pending = true;
-//    while(pending) {
-//        if(homingclient.waitForResult(ros::Duration(30.0))) {
-//            actionlib::SimpleClientGoalState state = prepositionclient_.getState();
-//            if(state.SUCCEEDED) {
-//                pending = false;
-//                ROS_INFO("fingers prepositioned!");
-//                break;
-//            } else {
-//                ROS_INFO("Preposition fingers state = %s", state.toString().c_str());
-//            }
-//        } else {
-//            ROS_ERROR("Preposition fingers run into timeout!");
-//            break;
-//        }
-//    }
-
+    // wait until action has completed
     action_active = true;
     while(action_active && g_active) {ros::spinOnce();}
 
 #endif
 
+#if 1
+    // test grasp part
+    //
+    boost::this_thread::sleep(boost::posix_time::millisec(500));
+    ROS_INFO("Testclient: Grasping");
+    // connect
+    actionlib::SimpleActionClient<ipa325_wsg50::WSG50GraspPartAction> gpclient_("WSG50Gripper_GraspPartAction", true);
+    if(!gpclient_.waitForServer(ros::Duration(20.0))) ROS_ERROR("Run into timeout while waiting for the grasp-part action server.");
+    // send action goal
+    ipa325_wsg50::WSG50GraspPartGoal g;
+    g.width = 25.0;
+    g.speed = 30.0;
+    gpclient_.sendGoal(g);
+    if(gpclient_.waitForResult(ros::Duration(30)))
+        ROS_INFO("Grasping successfull!");
+    else {
+        ROS_ERROR("Run into timeout while grasping!");
+        return 1;
+    }
+#endif
 
+#if 1
+    // test release part
+    //
+    boost::this_thread::sleep(boost::posix_time::millisec(500));
+    ROS_INFO("Testclient: releasing");
+    // connect
+    actionlib::SimpleActionClient<ipa325_wsg50::WSG50ReleasePartAction> rpclient_("WSG50Gripper_ReleasePartAction", true);
+    if(!rpclient_.waitForServer(ros::Duration(20.0))) ROS_ERROR("Run into timeout while waiting for the release-part action server.");
+    // send action goal
+    ipa325_wsg50::WSG50ReleasePartGoal gr;
+    gr.openwidth = 73.33;
+    gr.speed = 70.0;
+    rpclient_.sendGoal(gr);
+    if(rpclient_.waitForResult(ros::Duration(30)))
+        ROS_INFO("releasing part successfull!");
+    else {
+        ROS_ERROR("Run into timeout while releasing part!");
+        return 1;
+    }
+#endif
 
     // exit
     return 0;

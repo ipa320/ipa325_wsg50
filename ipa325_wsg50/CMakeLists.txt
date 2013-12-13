@@ -47,6 +47,8 @@ add_action_files(
     LwrRunControlScheme.action
     WSG50Homing.action
     WSG50PrePositionFingers.action
+    WSG50GraspPart.action
+    WSG50ReleasePart.action
 )
 
 ## Generate messages in the 'msg' folder

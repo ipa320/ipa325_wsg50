@@ -258,7 +258,10 @@ private:
 
     // threading
     //
-    boost::mutex    _msgMutex;
+    boost::mutex    _msgMutex,
+                    _currentForceMutex,
+                    _currentSpeedMutex,
+                    _currentWidthMutex;
 
     // run State-Machine
     //

@@ -7,4 +7,6 @@ float32 speed
 int32 status_code
 ---
 #feedback
-int32 status_code
+float32 width
+float32 speed
+float32 force

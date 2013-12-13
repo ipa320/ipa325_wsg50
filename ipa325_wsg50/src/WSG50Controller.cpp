@@ -278,8 +278,8 @@ void WSG50Controller::setupConnection()
  */
 void WSG50Controller::update(TRESPONSE * resp)
 {
-    if(DEBUG) ROS_INFO("WSG50Controller::update()");
-
+    // declare variables
+    //
     int l, i;
 
     // copy id, length and status code
@@ -538,8 +538,10 @@ void WSG50Controller::updateHandler(void)
         if(_resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET OPENING WIDTH response: Success!");
             if(_resp.length == 4) {
+                _currentWidthMutex.lock();
                 memcpy(&_currentOpeningWidth, _resp.data, sizeof(float));
-                if(DEBUG) ROS_INFO("current opening width: %f", _currentOpeningWidth);
+                _currentWidthMutex.unlock();
+//                if(DEBUG) ROS_INFO("current opening width: %f", _currentOpeningWidth);
             } else {
                 ROS_ERROR("expected 4 byte of data for opening width!");
             }
@@ -556,8 +558,10 @@ void WSG50Controller::updateHandler(void)
         if(_resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET SPEED response: Success!");
             if(_resp.length == 4) {
+                _currentSpeedMutex.lock();
                 memcpy(&_currentSpeed, _resp.data, sizeof(float));
-                if(DEBUG) ROS_INFO("current speed: %f", _currentSpeed);
+                _currentSpeedMutex.unlock();
+//                if(DEBUG) ROS_INFO("current speed: %f", _currentSpeed);
             } else {
                 ROS_ERROR("expected 4 byte of data for opening width!");
             }
@@ -574,8 +578,10 @@ void WSG50Controller::updateHandler(void)
         if(_resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET FORCE response: Success!");
             if(_resp.length == 4) {
+                _currentForceMutex.lock();
                 memcpy(&_currentForce, _resp.data, sizeof(float));
-                if(DEBUG) ROS_INFO("current force: %f", _currentForce);
+                _currentForceMutex.unlock();
+//                if(DEBUG) ROS_INFO("current force: %f", _currentForce);
             } else {
                 ROS_ERROR("expected 4 byte of data for opening width!");
             }
@@ -617,7 +623,12 @@ void WSG50Controller::notifyObserver(unsigned int msgId, TRESPONSE * resp)
     std::set< WSG50RosObserver *>::iterator setIt;
     std::set< WSG50RosObserver *> observerSet;
 
-    if(DEBUG) ROS_WARN("notify observer for message: %02X", msgId);
+    if(DEBUG
+            && resp->id != 0x43     // dont print message if response is from width, speed or force stats
+            && resp->id != 0x44
+            && resp->id != 0x45) {
+        ROS_WARN("notify observer for message: %02X", msgId);
+    }
 
     // check if there is an observer for this msgid
     //
@@ -628,7 +639,7 @@ void WSG50Controller::notifyObserver(unsigned int msgId, TRESPONSE * resp)
         it = this->_observers.find(msgId);
         observerSet = it->second;
 
-        if(DEBUG) ROS_INFO("There are %d observers subscribed:", (int) observerSet.size());
+        if(DEBUG && resp->id != 0x43) ROS_INFO("There are %d observers subscribed:", (int) observerSet.size());
 
         // loop through the set and update all observers
         //
@@ -644,7 +655,12 @@ void WSG50Controller::notifyObserver(unsigned int msgId, TRESPONSE * resp)
         }
     } // else, if there is no set of observers for this message id
     else {
-        if(DEBUG) ROS_INFO("There is no observer subscribed for this message id.");
+        if(DEBUG
+                && resp->id != 0x43
+                && resp->id != 0x44
+                && resp->id != 0x45) {
+            ROS_INFO("There is no observer subscribed for this message id.");
+        }
     }
 }
 
@@ -844,7 +860,7 @@ void WSG50Controller::homing()
 void WSG50Controller::homing(unsigned int direction)
 {
 
-    if(DEBUG) ROS_INFO("Homing...\n");
+    if(DEBUG) ROS_INFO("\n\n##########################\n##  Homing...\n##########################");
 
     // check if ready
     //
@@ -901,7 +917,7 @@ void WSG50Controller::prePositionFingers(bool stopOnBlock, float width, float sp
     unsigned char data[9];
     unsigned char tmp[4]; // to memcpy
 
-    if(DEBUG) ROS_INFO("PrePositionFingers: Width = %f\n", width);
+    if(DEBUG) ROS_INFO("\n\n##########################\n##  Prepositoin Fingers with width: %f\n##########################", width);
 
     // check if ready
     //
@@ -997,6 +1013,8 @@ void WSG50Controller::grasp(float width, float speed)
     int i;
     unsigned char data[8];
     unsigned char tmpFloat[4];
+
+    if(DEBUG) ROS_INFO("\n\n##########################\n##  Grasping...\n##########################");
 
     // check if ready
     //
@@ -1376,76 +1394,87 @@ float WSG50Controller::getMinForceLimit() { return this->_MinForceLimit; }
 
 float WSG50Controller::getWidth(void)
 {
-    if(DEBUG) ROS_INFO("Get Width...!\n");
+//    if(DEBUG) ROS_INFO("Get Width...!\n");
+
+    float width = 0.0;
 
     // TODO:
     // check if the last update is older than XX. if so, then first get an update from the gripper
     //
-    if(_widthAutoUpdate) {
-        return _currentOpeningWidth;
+    if(!_widthAutoUpdate) {
+        // request width
+        //
+        getOpeningWidthUpdates(false, false, 1000);
+
+        // Loop Wait for Response
+        //
+        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
     }
-
-    // otherwise request width
-    //
-    getOpeningWidthUpdates(false, false, 1000);
-
-    // Loop Wait for Response
-    //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
 
     // return results
     //
-    return _currentOpeningWidth;
+    _currentWidthMutex.lock();
+    width = _currentOpeningWidth;
+    _currentWidthMutex.unlock();
+
+    return width;
 }
 
 
 float WSG50Controller::getSpeed(void)
 {
-    if(DEBUG) ROS_INFO("Get Width...!\n");
+//    if(DEBUG) ROS_INFO("Get Speed...!\n");
+    float speed = 0.0;
 
     // TODO:
     // check if the last update is older than XX. if so, then first get an update from the gripper
     //
-    if(_speedAutoUpdate) {
-        return _currentSpeed;
+    if(!_speedAutoUpdate) {
+
+        // otherwise request width
+        //
+        getSpeedUpdates(false, false, 1000);
+
+        // Loop Wait for Response
+        //
+        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
     }
 
-    // otherwise request width
+    // copy from buffer
     //
-    getSpeedUpdates(false, false, 1000);
-
-    // Loop Wait for Response
-    //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    _currentSpeedMutex.lock();
+    speed = _currentSpeed;
+    _currentSpeedMutex.unlock();
 
     // return results
-    //
-    return _currentSpeed;
+    return speed;
 }
 
 
 float WSG50Controller::getForce(void)
 {
-    if(DEBUG) ROS_INFO("Get Width...!\n");
+    float force = -0.1;
 
     // TODO:
     // check if the last update is older than XX. if so, then first get an update from the gripper
     //
-    if(_forceAutoUpdate) {
-        return _currentForce;
+    if(!_forceAutoUpdate) {
+        // otherwise request width
+        //
+        getForceUpdates(false, false, 1000);
+
+        // Loop Wait for Response
+        //
+        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
     }
-
-    // otherwise request width
-    //
-    getForceUpdates(false, false, 1000);
-
-    // Loop Wait for Response
-    //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
 
     // return results
     //
-    return _currentForce;
+    _currentForceMutex.lock();
+    force = _currentForce;
+    _currentForceMutex.unlock();
+
+    return force;
 }
 
 

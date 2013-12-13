@@ -43,6 +43,7 @@ boost::mutex    g_mutex;
 
 
 bool    g_active = true;
+bool    action_active = false;
 
 
 void mySigintHandler(int)
@@ -53,6 +54,40 @@ void mySigintHandler(int)
 }
 
 
+// goal callback
+// is called, once the goal is completed
+//
+void prepFingersDoneCB(const actionlib::SimpleClientGoalState &state_,
+                       const ipa325_wsg50::WSG50PrePositionFingersResultConstPtr &result_)
+{
+    if(DEBUG) ROS_INFO("Preposition Fingers DONE!");
+
+    action_active = false;
+
+    // ...
+}
+
+// active callback
+// is called, once the activity has started execution
+//
+void prepFingersActiveCB()
+{
+    if(DEBUG) ROS_INFO("Preposition Fingers ACTIVE now!");
+
+    // ...
+}
+
+// feedback callback
+// called every time feedback for this goal is available
+//
+void prepFingersFeedbackCB(const ipa325_wsg50::WSG50PrePositionFingersFeedbackConstPtr &feedback_)
+{
+    if(DEBUG) {
+        ROS_INFO("Feedback: width = %f; speed = %f; force = %f;", feedback_->width, feedback_->speed, feedback_->force);
+    }
+
+    // ...
+}
 
 /*
  * ROS Node
@@ -60,7 +95,7 @@ void mySigintHandler(int)
  */
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "lwr_testclient");
+    ros::init(argc, argv, "schunk_testclient");
 
     ros::NodeHandle node;
 
@@ -134,25 +169,29 @@ int main(int argc, char **argv)
     goal2.stopOnBlock = true;
     goal2.width = 55.0;
     goal2.speed = 50.0;
-    prepositionclient_.sendGoal(goal2);
+    prepositionclient_.sendGoal(goal2, &prepFingersDoneCB, &prepFingersActiveCB, &prepFingersFeedbackCB);
 
     // wait for result or timeout
-    bool pending = true;
-    while(pending) {
-        if(homingclient.waitForResult(ros::Duration(30.0))) {
-            actionlib::SimpleClientGoalState state = prepositionclient_.getState();
-            if(state.SUCCEEDED) {
-                pending = false;
-                ROS_INFO("fingers prepositioned!");
-                break;
-            } else {
-                ROS_INFO("Preposition fingers state = %s", state.toString().c_str());
-            }
-        } else {
-            ROS_ERROR("Preposition fingers run into timeout!");
-            break;
-        }
-    }
+//    bool pending = true;
+//    while(pending) {
+//        if(homingclient.waitForResult(ros::Duration(30.0))) {
+//            actionlib::SimpleClientGoalState state = prepositionclient_.getState();
+//            if(state.SUCCEEDED) {
+//                pending = false;
+//                ROS_INFO("fingers prepositioned!");
+//                break;
+//            } else {
+//                ROS_INFO("Preposition fingers state = %s", state.toString().c_str());
+//            }
+//        } else {
+//            ROS_ERROR("Preposition fingers run into timeout!");
+//            break;
+//        }
+//    }
+
+    action_active = true;
+    while(action_active && g_active) {ros::spinOnce();}
+
 #endif
 
 

@@ -8,7 +8,7 @@
 #include <boost/thread/mutex.hpp>
 
 
-#define DEBUG true
+#define DEBUG false
 
 #ifndef SER_MSG_NUM_HEADER_BYTES
 #define SER_MSG_NUM_HEADER_BYTES    3       //!< number of header bytes
@@ -242,7 +242,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
         //
         responseTCPBuffer = (unsigned char * ) buffer.c_array();
         this->_respTCPBuffAllocated = true;
-        this->printHexArray(responseTCPBuffer, len);
+        if(DEBUG) this->printHexArray(responseTCPBuffer, len);
 
         // create response message
         responseMsg = createTRESPONSE(responseTCPBuffer, len);
@@ -359,6 +359,9 @@ void WSG50Communicator::pushMessage(TMESSAGE *msg)
         this->printHexArray(msg->data, (int) msg->length);
     }
 
+    // lock
+    _wsgBufferMutex.lock();
+
     // Convert message into byte sequence:
     WSGBUF = msg_build( msg, &WSGSIZE );
     if ( !WSGBUF )
@@ -377,6 +380,9 @@ void WSG50Communicator::pushMessage(TMESSAGE *msg)
     boost::asio::write(sock, boost::asio::buffer(WSGBUF, WSGSIZE));
 
     delete WSGBUF;
+
+    // unlock
+    _wsgBufferMutex.unlock();
 }
 
 
@@ -724,197 +730,4 @@ void WSG50Communicator::printTRESPONSE(TRESPONSE msg)
         std::cout << "\t# no data!" << std::endl;
     }
     std::cout << std::endl << "\t#####################" << std::endl;
-}
-
-
-
-//! ############################################################################
-//! Deprecated Methods
-//! ############################################################################
-
-
-
-
-/*
- * Check Communication
- * send loop message and check return
- */
-bool WSG50Communicator::isCommunicationOK(void)
-{
-    ROS_ERROR("Deprecated Function! please use pushMessage(TMESSAGE * msg)");
-
-
-//    // *****************************************************************
-//    // Create Dummy Loop Message
-//    //
-
-//    TMESSAGE msg;
-//    int i;
-//    boost::array<unsigned char, 8> data;
-
-//    msg.id = _LOOP;
-
-//    for(i=0; i<8; i++) data[i] = 0xff;
-
-//    msg.length = 8;
-//    msg.data = data.c_array();
-
-
-//    // *****************************************************************
-//    // creating / sending message and define callback
-//    //
-//    printf("sending Loop-msg\n");
-
-//    this->_checkingConnection = false;
-//    pushMessage(&msg);
-
-//    return true;
-}
-
-
-bool WSG50Communicator::doHoming(unsigned int direction)
-{
-    bool ret = false;
-
-
-    if(DEBUG) ROS_INFO("Check communication...");
-
-
-    // *****************************************************************
-    // Create Homing Message
-    //
-
-    TMESSAGE msg;
-    int i;
-    boost::array<unsigned char, 1> data;
-
-    msg.id = _HOMING;
-
-    // 0: use default falue
-    // 1: positive movement direction
-    // 2: negative movement direction
-    if(direction == 2)
-        data[0] = 0x02;
-    else if(direction == 1)
-        data[0] = 0x01;
-    else
-        data[0] = 0x00;
-
-    msg.length = 1;
-    msg.data = data.c_array();
-
-
-    // *****************************************************************
-    // creating / sending message and define callback
-    //
-    std::cout << "sending Homing-msg" << std::endl;
-
-//    TStat result = msg_send(&msg);
-//    if(result != E_SUCCESS) {
-//        if(result == E_ACCESS_DENIED)
-//            ROS_ERROR("Loop command error: E_ACCESS_DENIED");
-//        else if(result == E_ALREADY_RUNNING)
-//            ROS_ERROR("Loop command error: E_ALREADY_RUNNING");
-//        else if(result == E_CMD_FORMAT_ERROR)
-//            ROS_ERROR("Loop command error: E_CMD_FORMAT_ERROR");
-//        else if(result == E_INVALID_PARAMETER)
-//            ROS_ERROR("Loop command error: E_INVALID_PARAMETER");
-//        else if(result == E_CMD_PENDING)
-//            ROS_ERROR("Loop command error: E_CMD_PENDING");
-
-//        ret = false;
-//    }
-
-    ret = true;
-
-    return ret;
-}
-
-
-
-void WSG50Communicator::sendMessage(TMESSAGE *msg, TMESSAGE *response)
-{
-
-}
-
-
-void WSG50Communicator::sendAsyncMessage(TMESSAGE *msg,
-                                         callbackTRESPONSE immediateResponse,
-                                         callbackTRESPONSE finalResponse)
-{
-    // instantiate variables
-    //
-    bool    waiting = true;
-
-    int     loopCounter = 0,
-            responseCounter = 0;
-
-    size_t  len;
-
-    unsigned char* response;
-
-    boost::system::error_code error;
-
-
-    // debugging information
-    //
-    if(DEBUG) std::cout << "send asynchroneous message." << std::endl;
-
-
-    // create message-buffer
-    //
-    WSGBUF = msg_build( msg, &WSGSIZE );
-    if ( !WSGBUF ) return;
-
-
-    // send message
-    //
-    boost::asio::write( sock, boost::asio::buffer( WSGBUF, WSGSIZE ) );
-
-
-
-    // loop
-    //
-    while(waiting)
-    {
-
-        // read response messages
-        //
-        len = sock.read_some(boost::asio::buffer( buffer ), error);
-
-        // check for errors
-        //
-        if(error)
-            throw boost::system::system_error(error);
-
-
-        response = (unsigned char * ) buffer.c_array();
-        responseCounter++;
-        if(DEBUG)
-        {
-            printf("Gripper-Response Asynchroneous message %d\n;", responseCounter);
-            printHexArray(response, len);
-        }
-
-
-        // call immediateResponse callback method
-        //
-
-        // call finalResponse callback method
-        //
-
-
-        // break arguments
-        //
-        loopCounter++;
-        if( loopCounter >= 100 ) waiting = false;
-        if( responseCounter >= 2 ) waiting = false;
-    }
-
-
-    // call callback method
-    //
-//    cb(E_ACCESS_DENIED);
-
-    return;
 }

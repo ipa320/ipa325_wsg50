@@ -153,21 +153,8 @@ private:
     void            printTRESPONSE(TRESPONSE msg);
 
 
-    /*! #################################################################
-     *  DEPRECATED!
-     */
-
     /**
-     * motion control
+     * threading
      */
-    /*
-     * @param: unsigned int direction
-     *      0: default direction
-     *      1: positive movement direction
-     *      2: negative movement direction
-     */
-    bool doHoming(unsigned int direction);
-
-
-
+    boost::mutex    _wsgBufferMutex;
 };

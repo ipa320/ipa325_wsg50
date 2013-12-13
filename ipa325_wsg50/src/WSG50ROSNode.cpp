@@ -87,7 +87,6 @@ public:
         homingserver_(nh_, name, false),
         action_name_(name)
     {
-
         _name = 200000;
 
         ROS_WARN("initializing homing action.");
@@ -113,14 +112,8 @@ public:
     // homing action
     void doHoming()
     {
-        ROS_WARN("doHoming() called!!");
-
+        if(DEBUG) ROS_WARN("doHoming() called!!");
         goal_ = (unsigned int) homingserver_.acceptNewGoal()->direction;
-
-        // subscribe for notifications on opening width messages
-        //
-        _controller->Attach(this, 0x43);
-
         _controller->homing(goal_);
     }
 
@@ -131,47 +124,24 @@ public:
     using WSG50RosObserver::update;
     void update(TRESPONSE *response)
     {
-        // check response
+
+        // if pending or already running, send feedback
         //
-        if(response->id == 0x21)
+        if(response->status_code == E_CMD_PENDING
+                || response->status_code == E_ALREADY_RUNNING)
         {
-
-            // if pending or already running, send feedback
-            //
-            if(response->status_code == E_CMD_PENDING
-                    || response->status_code == E_ALREADY_RUNNING)
-            {
-                result_.status_code = response->status_code;
-                this->homingserver_.isActive();
-            }
-            // if success-response
-            else if(response->status_code == E_SUCCESS) {
-                result_.status_code = response->status_code;
-                this->homingserver_.setSucceeded(this->result_);
-
-                // unsubscribe from controller notifications
-                //
-                _controller->Detach(this, 0x43);
-            }
-            // if other response message
-            else {
-                result_.status_code = response->status_code;
-                this->homingserver_.setAborted(this->result_);
-
-                // unsubscribe from controller notifications
-                //
-                _controller->Detach(this, 0x43);
-            }
-
-
-        } // handle updates for opening width messages
-        else if(response->id == 0x43)
-        {
-            feedback_.force = _controller->getForce();
-            feedback_.speed = _controller->getSpeed();
-            feedback_.width = _controller->getWidth();
-
-            homingserver_.publishFeedback(feedback_);
+            result_.status_code = response->status_code;
+            this->homingserver_.isActive();
+        }
+        // if success-response
+        else if(response->status_code == E_SUCCESS) {
+            result_.status_code = response->status_code;
+            this->homingserver_.setSucceeded(this->result_);
+        }
+        // if other response message
+        else {
+            result_.status_code = response->status_code;
+            this->homingserver_.setAborted(this->result_);
         }
 
         return;
@@ -212,54 +182,58 @@ public:
 
     void doPrePositionFingers()
     {
-        // get values
-//        stopOnBlock_ = (bool) prepositionserver_.acceptNewGoal()->stopOnBlock;
-//        width_ = (float) prepositionserver_.acceptNewGoal()->width;
-//        speed_ = (float) prepositionserver_.acceptNewGoal()->speed;
+        // accept new goal and get values
+        //
         ipa325_wsg50::WSG50PrePositionFingersGoalConstPtr goal;
         goal = prepositionserver_.acceptNewGoal();
         stopOnBlock_ = goal->stopOnBlock;
         width_ = goal->width;
         speed_ = goal->speed;
 
+        // debug information
         if(DEBUG) ROS_INFO("Preposition Fingers Action called with following params: stopOnBlock = %d, width = %f, speed = %f",
                            (int) stopOnBlock_, width_, speed_);
 
+        // subscribe for width updates
+        //
+        _controller->Attach(this, 0x43);
+
         // trigger action
         _controller->prePositionFingers(stopOnBlock_, width_, speed_);
-
-
-        // feedback
-//        boost::thread t_ = boost::thread(boost::bind(&WSG50PrePositionFingersActionServer::feedback, this, false));
-    }
-
-    void feedback()
-    {
-        // TODO: send continuous feedback about width and force
-        //
     }
 
     void update(TRESPONSE *response)
     {
-        if(DEBUG) ROS_INFO("node: send feedback / result message");
-        if(response->status_code == E_ACCESS_DENIED ||
-                response->status_code == E_NOT_INITIALIZED ||
-                response->status_code == E_RANGE_ERROR ||
-                response->status_code == E_CMD_FORMAT_ERROR ||
-                response->status_code == E_INSUFFICIENT_RESOURCES ||
-                response->status_code == E_AXIS_BLOCKED ||
-                response->status_code == E_TIMEOUT ||
-                response->status_code == E_CMD_ABORTED)
-        {
-            result_.status_code = response->status_code;
-            this->prepositionserver_.setAborted(result_);
-        } else if(response->status_code == E_SUCCESS)
-        {
-            result_.status_code = response->status_code;
-            this->prepositionserver_.setSucceeded(result_);
-        } else if(response->status_code == E_CMD_PENDING)
-        {
-            feedback_.status_code = response->status_code;
+        if(response->id == 0x21) {
+            if(DEBUG) ROS_INFO("node: send feedback / result message");
+            if(response->status_code == E_ACCESS_DENIED ||
+                    response->status_code == E_NOT_INITIALIZED ||
+                    response->status_code == E_RANGE_ERROR ||
+                    response->status_code == E_CMD_FORMAT_ERROR ||
+                    response->status_code == E_INSUFFICIENT_RESOURCES ||
+                    response->status_code == E_AXIS_BLOCKED ||
+                    response->status_code == E_TIMEOUT ||
+                    response->status_code == E_CMD_ABORTED)
+            {
+                result_.status_code = response->status_code;
+                this->prepositionserver_.setAborted(result_);
+                // detach observer from width updates
+                _controller->Detach(this, 0x43);
+            } else if(response->status_code == E_SUCCESS)
+            {
+                result_.status_code = response->status_code;
+                this->prepositionserver_.setSucceeded(result_);
+                // detach observer from width updates
+                _controller->Detach(this, 0x43);
+            } else if(response->status_code == E_CMD_PENDING)
+            {
+                // ??
+            }
+        } else if(response->id == 0x43) {
+            feedback_.width = _controller->getWidth();
+            feedback_.force = _controller->getForce();
+            feedback_.speed = _controller->getSpeed();
+
             this->prepositionserver_.publishFeedback(feedback_);
         }
     }

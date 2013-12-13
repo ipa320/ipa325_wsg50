@@ -1,0 +1,4 @@
+syntax: glob
+ipa325_wsg50-build/*
+ipa325_wsg50/CMakeLists.txt.user
+ipa325_wsg50/CMakeLists.txt~

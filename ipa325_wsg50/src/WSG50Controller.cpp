@@ -676,6 +676,11 @@ bool WSG50Controller::isCommunicationOk()
     // *****************************************************************
     // Create Dummy Loop Message
     //
+
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     _msg.id = _LOOP;
 
     for(i=0; i<8; i++) data[i] = 0xff;
@@ -688,6 +693,9 @@ bool WSG50Controller::isCommunicationOk()
     this->_LoopTestDataLength = _msg.length;
 
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
 
     // *****************************************************************
@@ -735,6 +743,96 @@ bool WSG50Controller::isCommunicationOk()
  *  ####################################
  *
  */
+
+
+
+/*
+ *  STOP
+ *  this will stop any motion
+ */
+void WSG50Controller::stop()
+{
+    // Create Message
+    //
+    // lock msg access
+    //
+    _msgMutex.lock();
+
+    _msg.id = _STOP;
+    _msg.length = 0;
+    _msg.data = 0;
+
+    // prevent further commands:
+    //
+    _ready = false;
+
+    // send message
+    //
+    _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
+}
+
+
+/*
+ *  FAST STOP
+ *  immediately stop any motion and prevent any further motion-related commands from beeing executed
+ *  Requires FAST STOP Acknowledgement message to release lock
+ */
+void WSG50Controller::fastStop()
+{
+    // Create Message
+    //
+
+    // lock msg access
+    //
+    _msgMutex.lock();
+
+    _msg.id = _FASTSTOP;
+    _msg.length = 0;
+    _msg.data = 0;
+
+    // send message
+    //
+    _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
+}
+
+/*
+ *  acknowledge previouslz issued FAST STOP or severe error
+ *  to release motion-lock
+ */
+void WSG50Controller::ackFastStop()
+{
+    unsigned char data[3];
+
+    // lock msg access
+    //
+    _msgMutex.lock();
+
+    // Create Message
+    //
+    _msg.id = _ACKFASTSTOP;
+    _msg.length = 3;
+
+    data[0] = 0x61;     // a
+    data[1] = 0x63;     // c
+    data[2] = 0x6B;     // k    = "ack"
+
+    _msg.data = data;
+
+    // send message
+    //
+    _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
+}
+
+
 void WSG50Controller::homing()
 {
     homing(0);
@@ -815,10 +913,6 @@ void WSG50Controller::prePositionFingers(bool stopOnBlock, float width, float sp
     //
     _ready = false;
 
-    // initialize:
-    _msg.id = _PREPFINGERS; // Preposition fingers
-    _msg.length = 9;
-
     // ***********************************************************
     // set values
     //
@@ -867,85 +961,28 @@ void WSG50Controller::prePositionFingers(bool stopOnBlock, float width, float sp
         pos++;
     }
 
-//    printf("speed: ");
-//    _wsgComm->printHexArray(tmp, 4);
+    if(DEBUG) {
+        ROS_INFO("data package for preposition fingers: ");
+        _wsgComm->printHexArray(data, 9);
+    }
 
-    if(DEBUG) ROS_INFO("data package for preposition fingers: ");
-    _wsgComm->printHexArray(data, 9);
 
+    // lock msg access
+    //
+    _msgMutex.lock();
 
     // assign to message
     //
+    _msg.id = _PREPFINGERS; // Preposition fingers
+    _msg.length = 9;
     _msg.data = data;
 
     // send message
     //
     this->_wsgComm->pushMessage(&_msg);
-}
 
-
-/*
- *  STOP
- *  this will stop any motion
- */
-void WSG50Controller::stop()
-{
-    // Create Message
-    //
-    _msg.id = _STOP;
-    _msg.length = 0;
-    _msg.data = 0;
-
-    // prevent further commands:
-    //
-    _ready = false;
-
-    // send message
-    //
-    _wsgComm->pushMessage(&_msg);
-}
-
-
-/*
- *  FAST STOP
- *  immediately stop any motion and prevent any further motion-related commands from beeing executed
- *  Requires FAST STOP Acknowledgement message to release lock
- */
-void WSG50Controller::fastStop()
-{
-    // Create Message
-    //
-    _msg.id = _FASTSTOP;
-    _msg.length = 0;
-    _msg.data = 0;
-
-    // send message
-    //
-    _wsgComm->pushMessage(&_msg);
-}
-
-/*
- *  acknowledge previouslz issued FAST STOP or severe error
- *  to release motion-lock
- */
-void WSG50Controller::ackFastStop()
-{
-    unsigned char data[3];
-
-    // Create Message
-    //
-    _msg.id = _ACKFASTSTOP;
-    _msg.length = 3;
-
-    data[0] = 0x61;     // a
-    data[1] = 0x63;     // c
-    data[2] = 0x6B;     // k    = "ack"
-
-    _msg.data = data;
-
-    // send message
-    //
-    _wsgComm->pushMessage(&_msg);
+    // unlock
+    _msgMutex.unlock();
 }
 
 
@@ -979,11 +1016,6 @@ void WSG50Controller::grasp(float width, float speed)
     if(speed < _MinSpeed) {speed = _MinSpeed;}
     else if(speed > _MaxSpeed) {speed = _MaxSpeed;}
 
-    // create Message
-    //
-    _msg.id = _GRASPPART;
-    _msg.length = 8;
-
     // cpy float values into char array
     memcpy(tmpFloat, &width, sizeof(float));
     // cpy into data array
@@ -994,11 +1026,22 @@ void WSG50Controller::grasp(float width, float speed)
     // cpy into data array
     for(i=0; i<4; i++) {data[(i+4)] = tmpFloat[i];}
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
+    // create Message
+    //
+    _msg.id = _GRASPPART;
+    _msg.length = 8;
     _msg.data = data;
 
     // send message
     //
     _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 }
 
 
@@ -1026,6 +1069,10 @@ void WSG50Controller::release(float openWidth, float speed)
     if(speed < _MinSpeed) {speed = _MinSpeed;}
     else if(speed > _MaxSpeed) {speed = _MaxSpeed;}
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // create Message
     //
     _msg.id = _RELEASEPART;
@@ -1046,6 +1093,9 @@ void WSG50Controller::release(float openWidth, float speed)
     // send message
     //
     _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 }
 
 
@@ -1092,6 +1142,10 @@ void WSG50Controller::setAcceleration(float acceleration)
     //
     _ready = false;
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // initialize:
     _msg.id = _SETACC; // Set Acceleration
     _msg.length = 4;
@@ -1102,6 +1156,9 @@ void WSG50Controller::setAcceleration(float acceleration)
     // set values
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 }
 
 
@@ -1141,6 +1198,10 @@ void WSG50Controller::setForceLimit(float forcelimit)
     //
     _ready = false;
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // initialize:
     _msg.id = _SETFORCELIMIT; // Preposition fingers
     _msg.length = 4;
@@ -1151,6 +1212,9 @@ void WSG50Controller::setForceLimit(float forcelimit)
     // set values
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 }
 
 
@@ -1188,6 +1252,10 @@ void WSG50Controller::setSoftLimits(float minusLimit, float plusLimit)
         ROS_ERROR("plusLimit is too low!");
     }
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // create Message
     //
     _msg.id = _SETSOFTLIMIT;
@@ -1208,6 +1276,9 @@ void WSG50Controller::setSoftLimits(float minusLimit, float plusLimit)
     // send message
     //
     _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 }
 
 void WSG50Controller::clearSoftLimits()
@@ -1222,6 +1293,10 @@ void WSG50Controller::clearSoftLimits()
     //
     _ready = false;
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // create message
     //
     _msg.id = _CLRSOFTLIMIT;
@@ -1231,6 +1306,9 @@ void WSG50Controller::clearSoftLimits()
     // Send Message
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     return;
 }
@@ -1257,6 +1335,9 @@ void WSG50Controller::tareForceSensor()
     //
     // TODO:
 
+    // lock msg access
+    //
+    _msgMutex.lock();
 
     // create message
     //
@@ -1267,6 +1348,9 @@ void WSG50Controller::tareForceSensor()
     // send message
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     // return
     return;
@@ -1406,6 +1490,10 @@ void WSG50Controller::getOpeningWidthUpdates(bool updateOnChangeOnly,
         dat[0] &= ~(1 << 1);    // false on position 1
     }
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // create message
     //
     _msg.id = _GETWIDTH;
@@ -1415,6 +1503,9 @@ void WSG50Controller::getOpeningWidthUpdates(bool updateOnChangeOnly,
     // write message
     //
     _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     // set flag for auto-update == true or false
     //
@@ -1466,6 +1557,10 @@ void WSG50Controller::getForceUpdates(bool updateOnChangeOnly,
         dat[0] &= ~(1 << 1);    // false on position 1
     }
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // create message
     //
     _msg.id = _GETFORCE;
@@ -1475,6 +1570,10 @@ void WSG50Controller::getForceUpdates(bool updateOnChangeOnly,
     // write message
     //
     _wsgComm->pushMessage(&_msg);
+
+    // unlock msg access
+    //
+    _msgMutex.unlock();
 
     // set flag for auto-update == true or false
     //
@@ -1526,6 +1625,10 @@ void WSG50Controller::getSpeedUpdates(bool updateOnChangeOnly,
         dat[0] &= ~(1 << 1);    // false on position 1
     }
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // create message
     //
     _msg.id = _GETSPEED;
@@ -1535,6 +1638,9 @@ void WSG50Controller::getSpeedUpdates(bool updateOnChangeOnly,
     // write message
     //
     _wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     // set flag for auto-update == true or false
     //
@@ -1559,6 +1665,10 @@ void WSG50Controller::getSoftLimits(float *softLimits)
     //
     _ready = false;
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // Create Message
     //
     _msg.id = _GETSOFTLIMIT;  // Get Acceleration
@@ -1568,6 +1678,9 @@ void WSG50Controller::getSoftLimits(float *softLimits)
     // Send Message
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     // Loop Wait for Response
     //
@@ -1598,6 +1711,10 @@ float WSG50Controller::getForceLimit()
     //
     _ready = false;
 
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // Create Message
     //
     _msg.id = _GETFORCELIMIT;  // Get Acceleration
@@ -1607,6 +1724,9 @@ float WSG50Controller::getForceLimit()
     // Send Message
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     // Loop Wait for Response
     //
@@ -1631,6 +1751,11 @@ float WSG50Controller::getAcceleration()
     //
     _ready = false;
 
+
+    // lock msg access
+    //
+    _msgMutex.lock();
+
     // Create Message
     //
     _msg.id = _GETACC;  // Get Acceleration
@@ -1640,6 +1765,9 @@ float WSG50Controller::getAcceleration()
     // Send Message
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     // Loop Wait for Response
     //
@@ -1682,6 +1810,9 @@ SSTATE WSG50Controller::getSystemState(bool updateOnChangeOnly,
 //    dat[1] = period[0];
 //    dat[2] = period[1];
 
+    // lock msg access
+    //
+    _msgMutex.lock();
 
     // create message
     //
@@ -1692,6 +1823,9 @@ SSTATE WSG50Controller::getSystemState(bool updateOnChangeOnly,
     // send message
     //
     this->_wsgComm->pushMessage(&_msg);
+
+    // unlock
+    _msgMutex.unlock();
 
     // wait for response
     //

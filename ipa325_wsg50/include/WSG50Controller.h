@@ -30,6 +30,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
+#include <boost/thread.hpp>
 #include <string>
 
 
@@ -255,11 +256,9 @@ private:
     unsigned char * _dat;
     int         _LoopTestDataLength;
 
-
-
-    // Networking
+    // threading
     //
-//    boost::asio::ip::tcp::iostream *_iostream;
+    boost::mutex    _msgMutex;
 
     // run State-Machine
     //
@@ -272,9 +271,4 @@ private:
     void notifyObserver(unsigned int msgId, TRESPONSE * resp);
 
 
-//    static void exitSignalHandler(int sig);
-
-    // Helper methods
-    //
-//    void printHexArray(unsigned char *ar, int size);
 };

@@ -165,8 +165,10 @@ int main(int argc, char **argv)
     // connect to action server
     actionlib::SimpleActionClient<ipa325_wsg50::WSG50PrePositionFingersAction>
             prepositionclient_("WSG50Gripper_PrePositionFingers", true);
-    if(!prepositionclient_.waitForServer(ros::Duration(20.0)))
-    {ROS_ERROR("Run into timeout while waiting for the preposition action server.");}
+    if(!prepositionclient_.waitForServer(ros::Duration(20.0))) {
+        ROS_ERROR("Run into timeout while waiting for the preposition action server.");
+        return 1;
+    }
 
     // send action goal
     ipa325_wsg50::WSG50PrePositionFingersGoal goal2;
@@ -188,7 +190,10 @@ int main(int argc, char **argv)
     ROS_INFO("Testclient: Grasping");
     // connect
     actionlib::SimpleActionClient<ipa325_wsg50::WSG50GraspPartAction> gpclient_("WSG50Gripper_GraspPartAction", true);
-    if(!gpclient_.waitForServer(ros::Duration(20.0))) ROS_ERROR("Run into timeout while waiting for the grasp-part action server.");
+    if(!gpclient_.waitForServer(ros::Duration(20.0))) {
+        ROS_ERROR("Run into timeout while waiting for the grasp-part action server.");
+        return 1;
+    }
     // send action goal
     ipa325_wsg50::WSG50GraspPartGoal g;
     g.width = 25.0;
@@ -209,7 +214,10 @@ int main(int argc, char **argv)
     ROS_INFO("Testclient: releasing");
     // connect
     actionlib::SimpleActionClient<ipa325_wsg50::WSG50ReleasePartAction> rpclient_("WSG50Gripper_ReleasePartAction", true);
-    if(!rpclient_.waitForServer(ros::Duration(20.0))) ROS_ERROR("Run into timeout while waiting for the release-part action server.");
+    if(!rpclient_.waitForServer(ros::Duration(20.0))) {
+        ROS_ERROR("Run into timeout while waiting for the release-part action server.");
+        return 1;
+    }
     // send action goal
     ipa325_wsg50::WSG50ReleasePartGoal gr;
     gr.openwidth = 73.33;

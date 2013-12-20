@@ -10,11 +10,10 @@
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 #include <string>
+#include <vector>
 #include <boost/thread.hpp>
-//#include <WSG50Controller.h>
 #include "WSG50Subject.h"
 #include "WSG50Observer.h"
-
 
 
 //! Typedef for Callback methods
@@ -152,6 +151,7 @@ private:
 
     void            printTRESPONSE(TRESPONSE msg);
 
+    int             findOccurence(unsigned char* ar, int length, unsigned char delimiter, int startPos);
 
     /**
      * threading

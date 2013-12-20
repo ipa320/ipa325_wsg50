@@ -2,15 +2,26 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-// #include <ros/ros.h>
 
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 
-//using WSG50Observer::update;
 
+/* ###########################################
+ * ###   Define Default Values   #############
+ * ###########################################
+ */
 #define DEBUG true
 
+#define DEFAULTIP   "192.168.1.20"
+#define DEFAULTPORT "1000"
+
+#define TIMEOUT     1       // sec
+
+/* ############################################################
+ * ###   Define Specific Values for Schung WSG50-100 Gripper  #
+ * ############################################################
+ */
 #ifndef MAXWIDTH
 #define MAXWIDTH 110.0
 #endif
@@ -44,6 +55,7 @@
 #endif
 
 
+// define local variables
 bool wsg_active;
 
 
@@ -95,7 +107,7 @@ WSG50Controller::WSG50Controller(std::string ip, std::string port)
  */
 void WSG50Controller::Attach(WSG50RosObserver * obs, unsigned int msgId)
 {
-    if(DEBUG) ROS_INFO("attach new RosObserver for ID: %d", msgId);
+    if(DEBUG) ROS_INFO("attach new RosObserver for ID: 0x%02X", msgId);
 
 
     // declare variables
@@ -115,14 +127,14 @@ void WSG50Controller::Attach(WSG50RosObserver * obs, unsigned int msgId)
         this->_observers[msgId] = observerSet_;
 
         if(DEBUG) {
-            ROS_INFO("observer attached! %d observers are now registerd for MsgID: %02X", (int) observerSet_.size(), msgId);
+            ROS_INFO("observer attached! %d observers are now registerd for MsgID: 0x%02X", (int) observerSet_.size(), msgId);
         }
     }
     else
     {
         // the key already exists
         //
-        if(DEBUG) ROS_INFO("an observer is already registered for msgId: %d", msgId);
+        if(DEBUG) ROS_INFO("an observer is already registered for msgId: 0x%02X", msgId);
 
         // declare variables
         //
@@ -158,7 +170,7 @@ void WSG50Controller::Attach(WSG50RosObserver * obs, unsigned int msgId)
             observerSet.insert(obs);
         }
 
-        if(DEBUG) ROS_INFO("observer attached! %d observers are now registerd for MsgID: %d", (int) observerSet.size(), msgId);
+        if(DEBUG) ROS_INFO("observer attached! %d observers are now registerd for MsgID: 0x%02X", (int) observerSet.size(), msgId);
     }
 }
 
@@ -172,6 +184,9 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
     std::map< unsigned int, std::set<WSG50RosObserver *> >::iterator it;
     std::set< WSG50RosObserver *>::iterator setIt;
     bool objectExists = false;
+
+    // Debug
+    if(DEBUG) ROS_INFO("Detach Observer for ID: 0x%02X", msgId_);
 
     // check if key exists
     if(this->_observers.find(msgId_) != this->_observers.end()) {
@@ -204,6 +219,8 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
                 }
             }
         }
+    } else {
+        if(DEBUG) ROS_WARN("for this message id: 0x%02X, no Observer is registered!", msgId_);
     }
 }
 
@@ -265,6 +282,7 @@ void WSG50Controller::setupConnection()
     // gripper is ready to receive commands
     //
     this->_ready = true;
+    this->_systStatesReadyForCommand = true;
 }
 
 
@@ -281,6 +299,9 @@ void WSG50Controller::update(TRESPONSE * resp)
     // declare variables
     //
     int l, i;
+
+    // lock response
+    _responseMutex.lock();
 
     // copy id, length and status code
     _resp.id = resp->id;
@@ -300,6 +321,9 @@ void WSG50Controller::update(TRESPONSE * resp)
     }
     _resp.data = _dat;
 
+    // unlock
+    _responseMutex.unlock();
+
     // call updateHandler in new thread
     //
     boost::thread(boost::bind(&WSG50Controller::updateHandler, this));
@@ -315,7 +339,11 @@ void WSG50Controller::updateHandler(void)
         ROS_INFO("Controller::updateHandler(): Response Data Length: %d", _resp.length);
     }
 
-    switch (_resp.id) {
+    _responseMutex.lock();
+    TRESPONSE resp = _resp;
+    _responseMutex.unlock();
+
+    switch (resp.id) {
     case 0x06: // _LOOP
         if(this->_checkingCommunication) {
             // we are currently checking the communication
@@ -324,10 +352,10 @@ void WSG50Controller::updateHandler(void)
             //
             bool ResultOK = true;
 
-            if(this->_LoopTestDataLength == (int) _resp.length)
+            if(this->_LoopTestDataLength == (int) resp.length)
             {
                 for(int i=0; i<this->_LoopTestDataLength; i++) {
-                    if(this->_LoopTestData[i] != _resp.data[i]) ResultOK = false;
+                    if(this->_LoopTestData[i] != resp.data[i]) ResultOK = false;
                 }
             }
             this->_communicationOK = ResultOK;
@@ -335,263 +363,268 @@ void WSG50Controller::updateHandler(void)
         }
         break;
     case 0x20:  // Homing
-        if(_resp.status_code == E_CMD_PENDING) {
+        if(resp.status_code == E_CMD_PENDING) {
             if(DEBUG) ROS_INFO("Do homing...");
             _ready = false;
-        } else if(_resp.status_code == E_SUCCESS) {
+        } else if(resp.status_code == E_SUCCESS) {
             _ready = true;
             if(DEBUG) ROS_INFO("Reached homing position.");
         } else {
             ROS_ERROR("Some error occured during homing:");
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
         }
 
         break;
     case 0x21:  // Pre-Position Fingers
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             _ready = true;
             ROS_INFO("Reached preposition fingers position. ");
-        } else if(_resp.status_code == E_AXIS_BLOCKED) {
+        } else if(resp.status_code == E_AXIS_BLOCKED) {
             ROS_ERROR("Axis blocked. Stopping motion.");
             _ready = true;
-        } else if(_resp.status_code == E_CMD_ABORTED) {
+        } else if(resp.status_code == E_CMD_ABORTED) {
             ROS_WARN("STOP command has been issued while Pre-Positioning fingers.");
             _ready = true;
-        } else if(_resp.status_code == E_CMD_PENDING) {
+        } else if(resp.status_code == E_CMD_PENDING) {
             ROS_INFO("Pre-Position Fingers: Command Pending");
             _ready = false;
         } else {
             ROS_ERROR("Pre-Position Fingers:");
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = true;
         }
         break;
     case 0x22:  // STOP Command
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("STOP command successfull");
             _ready = true;
-        } else if(_resp.status_code == E_NO_PARAM_EXPECTED) {
+        } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("STOP Command: No parameters expected!");
-        } else if(_resp.status_code == E_TIMEOUT) {
+        } else if(resp.status_code == E_TIMEOUT) {
             ROS_ERROR("STOP Command: timeout occured! Could not stop the gripper.");
         }
         break;
     case 0x23:  // FAST STOP Command
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_WARN("FAST STOP has been issued successfully. Preventing any further motion until acknowledgement message.");
             _ready = false;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = false;
         }
         break;
     case 0x24:  // _ACKFASTSTOP
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("Acknowledging FAST LOCK done! Ready for next command.");
             _ready = true;
-        } else if(_resp.status_code == E_CMD_FORMAT_ERROR) {
-            _wsgComm->printErrorCode(_resp.status_code);
+        } else if(resp.status_code == E_CMD_FORMAT_ERROR) {
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = false;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = false;
         }
         break;
     case 0x25:  // _Grasping
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("Grasped part. What to do next?");
             _ready = true;
-        } else if(_resp.status_code == E_CMD_PENDING
-                  || _resp.status_code == E_ALREADY_RUNNING) {
+        } else if(resp.status_code == E_CMD_PENDING
+                  || resp.status_code == E_ALREADY_RUNNING) {
             ROS_INFO("Currently busy grasping...");
             _ready = false;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = true;
         }
         break;
     case 0x26:  // Release part
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("Part has been dropped. What to do next?");
             _ready = true;
-        } else if(_resp.status_code == E_CMD_PENDING) {
+        } else if(resp.status_code == E_CMD_PENDING) {
             ROS_INFO("Release Part: Command Pending.");
             _ready = false;
-        } else if(_resp.status_code == E_ALREADY_RUNNING) {
+        } else if(resp.status_code == E_ALREADY_RUNNING) {
             ROS_ERROR("Release Part: Error already running");
             _ready = false;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = true;
         }
         break;
     case 0x30:  // _SETACC (Set Acceleration)
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("Acceleration set.");
             _ready = true;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = true;
         }
         // other status code: E_CMD_FORMAT_ERROR
         break;
     case 0x31:  // Get Acceleration
-        if(_resp.status_code == E_SUCCESS) {
-            memcpy(&_acceleration, _resp.data, sizeof(float)); // copy response into float acceleration variable
+        if(resp.status_code == E_SUCCESS) {
+            memcpy(&_acceleration, resp.data, sizeof(float)); // copy response into float acceleration variable
 //            float test = 0.0;
-//            memcpy(&test, _resp.data, sizeof(float));
+//            memcpy(&test, resp.data, sizeof(float));
 //            printf("Acceleration Value: %f\n\n", test);
             _ready = true;
-        } else if(_resp.status_code == E_NO_PARAM_EXPECTED) {
+        } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("GET ACCELERATION response: No Parameter Expected!");
             _ready = true;
         }
         break;
     case 0x32:  // _SETFORCELIMIT
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("ForceLimit set.");
             _ready = true;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
             _ready = true;
         }
         break;
     case 0x33:  // Get Force Limit
-        if(_resp.status_code == E_SUCCESS) {
-            memcpy(&_forceLimit, _resp.data, sizeof(float)); // copy response into float variable
+        if(resp.status_code == E_SUCCESS) {
+            memcpy(&_forceLimit, resp.data, sizeof(float)); // copy response into float variable
             _ready = true;
-        } else if(_resp.status_code == E_NO_PARAM_EXPECTED) {
+        } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("GET FORCE LIMIT response: No Parameter Expected!");
             _ready = true;
         }
         break;
     case 0x34:  // _SETSOFTLIMITS
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("Soft Limits have been set.");
             _ready = true;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
         }
         break;
     case 0x35:  // Get Soft Limits
-        if(_resp.status_code == E_SUCCESS) {
-            memcpy(&_softLimitMinus, _resp.data, sizeof(float)); // copy response into float variable
+        if(resp.status_code == E_SUCCESS) {
+            memcpy(&_softLimitMinus, resp.data, sizeof(float)); // copy response into float variable
             // copy values into an temporary array
             //
             unsigned char tmp[4];
             int j;
             for(int i=0; i<4; i++) {
                 j=i+4;
-                tmp[i] = _resp.data[j];
+                tmp[i] = resp.data[j];
             }
             memcpy(&_softLimitPlus, tmp, sizeof(float));
             _ready = true;
-        } else if(_resp.status_code == E_NO_PARAM_EXPECTED) {
+        } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("GET SOFT LIMITS response: No Parameter Expected!");
             _ready = true;
         }
         break;
     case 0x36:  // Clear Soft Limits
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("soft limits cleared successfully.");
             _ready = true;
-        } else if(_resp.status_code == E_NO_PARAM_EXPECTED) {
+        } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("CLEAR SOFT LIMITS response: No Parameter Expected!");
             _ready = true;
         } else {
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
         }
         break;
     case 0x38:  // Tare Force Sensor
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             ROS_INFO("force sensor zeroed.");
-            _ready = true;
-        } else if(_resp.status_code == E_NOT_AVAILABLE) {
+            _systStatesReadyForCommand = true;
+        } else if(resp.status_code == E_NOT_AVAILABLE) {
             ROS_ERROR("TARE FORCE SENSOR response: No force sensor installed!");
-            _ready = true;
-        } else if(_resp.status_code == E_ACCESS_DENIED) {
+            _systStatesReadyForCommand = true;
+        } else if(resp.status_code == E_ACCESS_DENIED) {
             ROS_ERROR("TARE FORCE SENSOR response: Command is not allowed in force control mode!");
-            _ready = true;
-        } else if(_resp.status_code == E_NO_PARAM_EXPECTED) {
+            _systStatesReadyForCommand = true;
+        } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("TARE FORCE SENSOR response: No Parameter Expected!");
-            _ready = true;
+            _systStatesReadyForCommand = true;
         } else {
             ROS_ERROR("TARE FORCE SENSOR response: Unexpected Error:");
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
+            _systStatesReadyForCommand = true;
         }
         break;
     case 0x40:  // Get System State
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             // TODO
             printf("got system state!");
 
-            _ready = true;
-        } else if(_resp.status_code == E_CMD_FORMAT_ERROR) {
+            _systStatesReadyForCommand = true;
+        } else if(resp.status_code == E_CMD_FORMAT_ERROR) {
             ROS_ERROR("GET SYSTEM STATE response: Command length mismatch");
-            _ready = true;
+            _systStatesReadyForCommand = true;
         } else {
             ROS_ERROR("GET SYSTEM STATE response: Unexpected Error:");
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
+            _systStatesReadyForCommand = true;
         }
         break;
     case 0x43:
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET OPENING WIDTH response: Success!");
-            if(_resp.length == 4) {
+            if(resp.length == 4) {
                 _currentWidthMutex.lock();
-                memcpy(&_currentOpeningWidth, _resp.data, sizeof(float));
+                memcpy(&_currentOpeningWidth, resp.data, sizeof(float));
                 _currentWidthMutex.unlock();
 //                if(DEBUG) ROS_INFO("current opening width: %f", _currentOpeningWidth);
             } else {
                 ROS_ERROR("expected 4 byte of data for opening width!");
             }
-            _ready = true;
-        } else if(_resp.status_code == E_CMD_FORMAT_ERROR) {
+            _systStatesReadyForCommand = true;
+        } else if(resp.status_code == E_CMD_FORMAT_ERROR) {
             ROS_ERROR("GET OPENING WIDTH response: Command length mismatch");
-            _ready = true;
+            _systStatesReadyForCommand = true;
         } else {
             ROS_ERROR("GET OPENING WIDTH response: Unexpected Error:");
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
+            _systStatesReadyForCommand = true;
         }
         break;
     case 0x44:
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET SPEED response: Success!");
-            if(_resp.length == 4) {
+            if(resp.length == 4) {
                 _currentSpeedMutex.lock();
-                memcpy(&_currentSpeed, _resp.data, sizeof(float));
+                memcpy(&_currentSpeed, resp.data, sizeof(float));
                 _currentSpeedMutex.unlock();
 //                if(DEBUG) ROS_INFO("current speed: %f", _currentSpeed);
             } else {
                 ROS_ERROR("expected 4 byte of data for opening width!");
             }
-            _ready = true;
-        } else if(_resp.status_code == E_CMD_FORMAT_ERROR) {
+            _systStatesReadyForCommand = true;
+        } else if(resp.status_code == E_CMD_FORMAT_ERROR) {
             ROS_ERROR("GET SPEED response: Command length mismatch");
-            _ready = true;
+            _systStatesReadyForCommand = true;
         } else {
             ROS_ERROR("GET SPEED response: Unexpected Error:");
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
+            _systStatesReadyForCommand = true;
         }
         break;
     case 0x45:
-        if(_resp.status_code == E_SUCCESS) {
+        if(resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET FORCE response: Success!");
-            if(_resp.length == 4) {
+            if(resp.length == 4) {
                 _currentForceMutex.lock();
-                memcpy(&_currentForce, _resp.data, sizeof(float));
+                memcpy(&_currentForce, resp.data, sizeof(float));
                 _currentForceMutex.unlock();
 //                if(DEBUG) ROS_INFO("current force: %f", _currentForce);
             } else {
                 ROS_ERROR("expected 4 byte of data for opening width!");
             }
-            _ready = true;
-        } else if(_resp.status_code == E_CMD_FORMAT_ERROR) {
+            _systStatesReadyForCommand = true;
+        } else if(resp.status_code == E_CMD_FORMAT_ERROR) {
             ROS_ERROR("GET FORCE response: Command length mismatch");
-            _ready = true;
+            _systStatesReadyForCommand = true;
         } else {
             ROS_ERROR("GET FORCE response: Unexpected Error:");
-            _wsgComm->printErrorCode(_resp.status_code);
+            _wsgComm->printErrorCode(resp.status_code);
+            _systStatesReadyForCommand = true;
         }
         break;
     default:
@@ -600,13 +633,13 @@ void WSG50Controller::updateHandler(void)
 
     // update observer
     //
-    notifyObserver((unsigned int) _resp.id, &_resp);
+    notifyObserver((unsigned int) resp.id, &resp);
 
     // free memory
     //
-    if(_resp.length > 0 && _resp.length != 0) {
-        delete[] _resp.data;
-        _resp.data = 0; // write zeropointer into data-pointer
+    if(resp.length > 0 && resp.length != 0) {
+        delete[] resp.data;
+        resp.data = 0; // write zeropointer into data-pointer
     }
 }
 
@@ -859,9 +892,6 @@ void WSG50Controller::homing()
  */
 void WSG50Controller::homing(unsigned int direction)
 {
-
-    if(DEBUG) ROS_INFO("\n\n##########################\n##  Homing...\n##########################");
-
     // check if ready
     //
     if(!_ready) {
@@ -917,7 +947,6 @@ void WSG50Controller::prePositionFingers(bool stopOnBlock, float width, float sp
     unsigned char data[9];
     unsigned char tmp[4]; // to memcpy
 
-    if(DEBUG) ROS_INFO("\n\n##########################\n##  Prepositoin Fingers with width: %f\n##########################", width);
 
     // check if ready
     //
@@ -1014,7 +1043,6 @@ void WSG50Controller::grasp(float width, float speed)
     unsigned char data[8];
     unsigned char tmpFloat[4];
 
-    if(DEBUG) ROS_INFO("\n\n##########################\n##  Grasping...\n##########################");
 
     // check if ready
     //
@@ -1069,7 +1097,6 @@ void WSG50Controller::release(float openWidth, float speed)
     unsigned char data[8];
     unsigned char tmpFloat[4];
 
-    if(DEBUG) ROS_INFO("\n\n##########################\n##  Release Part...\n##########################");
 
     // check if ready
     //
@@ -1408,13 +1435,20 @@ float WSG50Controller::getMinForceLimit() { return this->_MinForceLimit; }
 float WSG50Controller::getWidth(void)
 {
 //    if(DEBUG) ROS_INFO("Get Width...!\n");
-
+    int count=0, sleepingTimeInMs=5;
     float width = 0.0;
 
     // TODO:
     // check if the last update is older than XX. if so, then first get an update from the gripper
     //
     if(!_widthAutoUpdate) {
+        // check for timeout
+        //
+        if(((count*sleepingTimeInMs)/1000)>=TIMEOUT) {
+            ROS_ERROR("run into timeout while waiting for grasping state updates");
+            return -1;
+        }
+
         // request width
         //
         getOpeningWidthUpdates(false, false, 1000);
@@ -1422,6 +1456,8 @@ float WSG50Controller::getWidth(void)
         // Loop Wait for Response
         //
         while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+
+        count++;
     }
 
     // return results
@@ -1437,6 +1473,7 @@ float WSG50Controller::getWidth(void)
 float WSG50Controller::getSpeed(void)
 {
 //    if(DEBUG) ROS_INFO("Get Speed...!\n");
+    int count=0,sleepingTimeInMs=20;
     float speed = 0.0;
 
     // TODO:
@@ -1450,7 +1487,18 @@ float WSG50Controller::getSpeed(void)
 
         // Loop Wait for Response
         //
-        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+        while(!_ready) {
+            // check for timeout
+            //
+            if(((count*sleepingTimeInMs)/1000)>=TIMEOUT) {
+                ROS_ERROR("run into timeout while waiting for grasping state updates");
+                return -1;
+            }
+
+            boost::this_thread::sleep(boost::posix_time::millisec(20));
+
+            count++;
+        }
     }
 
     // copy from buffer
@@ -1467,8 +1515,8 @@ float WSG50Controller::getSpeed(void)
 float WSG50Controller::getForce(void)
 {
     float force = -0.1;
+    int count=0, sleepingTimeInMs=20;
 
-    // TODO:
     // check if the last update is older than XX. if so, then first get an update from the gripper
     //
     if(!_forceAutoUpdate) {
@@ -1478,7 +1526,18 @@ float WSG50Controller::getForce(void)
 
         // Loop Wait for Response
         //
-        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+        while(!_systStatesReadyForCommand) {
+            // check for timeout
+            //
+            if(((count*sleepingTimeInMs)/1000)>=TIMEOUT) {
+                ROS_ERROR("run into timeout while waiting for grasping state updates");
+                return -1;
+            }
+
+            boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+
+            count++;
+        }
     }
 
     // return results
@@ -1500,16 +1559,18 @@ void WSG50Controller::getOpeningWidthUpdates(bool updateOnChangeOnly,
     // delete &_msg;
     unsigned char dat[3];
     unsigned char period[2];
+    int sleepingTimeInMs = 20;
 
-    // check if ready
+    // set syst. states command
+    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    _systStatesReadyForCommand=false;
+
+    // set flag for auto-update == true or false
     //
-    if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
-        return;
-    }
-    // prevent from sending other messages
-    //
-    _ready = false;
+    if(automaticUpdatesEnabled) {
+        _widthAutoUpdate = true;
+    } else
+        _widthAutoUpdate = false;
 
     // set Data array
     //
@@ -1548,13 +1609,6 @@ void WSG50Controller::getOpeningWidthUpdates(bool updateOnChangeOnly,
 
     // unlock
     _msgMutex.unlock();
-
-    // set flag for auto-update == true or false
-    //
-    if(automaticUpdatesEnabled) {
-        _widthAutoUpdate = true;
-    } else
-        _widthAutoUpdate = false;
 }
 
 
@@ -1567,16 +1621,18 @@ void WSG50Controller::getForceUpdates(bool updateOnChangeOnly,
     // delete &_msg;
     unsigned char dat[3];
     unsigned char period[2];
+    int sleepingTimeInMs = 20;
 
-    // check if ready
+    // set syst. states command
+    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    _systStatesReadyForCommand=false;
+
+    // set flag for auto-update == true or false
     //
-    if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
-        return;
-    }
-    // prevent from sending other messages
-    //
-    _ready = false;
+    if(automaticUpdatesEnabled) {
+        _forceAutoUpdate = true;
+    } else
+        _forceAutoUpdate = false;
 
     // set Data array
     //
@@ -1616,13 +1672,6 @@ void WSG50Controller::getForceUpdates(bool updateOnChangeOnly,
     // unlock msg access
     //
     _msgMutex.unlock();
-
-    // set flag for auto-update == true or false
-    //
-    if(automaticUpdatesEnabled) {
-        _forceAutoUpdate = true;
-    } else
-        _forceAutoUpdate = false;
 }
 
 
@@ -1635,16 +1684,18 @@ void WSG50Controller::getSpeedUpdates(bool updateOnChangeOnly,
     // delete &_msg;
     unsigned char dat[3];
     unsigned char period[2];
+    int sleepingTimeInMs = 20;
 
-    // check if ready
+    // set syst. states command
+    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    _systStatesReadyForCommand=false;
+
+    // set flag for auto-update == true or false
     //
-    if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
-        return;
-    }
-    // prevent from sending other messages
-    //
-    _ready = false;
+    if(automaticUpdatesEnabled) {
+        _speedAutoUpdate = true;
+    } else
+        _speedAutoUpdate = false;
 
     // set Data array
     //
@@ -1683,13 +1734,6 @@ void WSG50Controller::getSpeedUpdates(bool updateOnChangeOnly,
 
     // unlock
     _msgMutex.unlock();
-
-    // set flag for auto-update == true or false
-    //
-    if(automaticUpdatesEnabled) {
-        _speedAutoUpdate = true;
-    } else
-        _speedAutoUpdate = false;
 }
 
 
@@ -1892,11 +1936,20 @@ SSTATE WSG50Controller::getSystemState(bool updateOnChangeOnly,
  */
 int WSG50Controller::getGraspingState()
 {
-    int gstate;
+    int gstate, count = 0, sleepingTimeInMs=20;
     short t = 0;
     if(!_graspingStateAutoUpdates) {
         getGraspingStateUpdates(false, false, t);
-        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+        while(!_ready) {
+            // check for timeout
+            if(((count * sleepingTimeInMs) / 1000) >= (TIMEOUT)) {
+                ROS_ERROR("run into timeout while waiting for grasping state updates");
+                return -1;
+            }
+            // sleep
+            boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+            count++;
+        }
     }
     _currentGraspingStateMutex.lock();
     gstate = _currentGraspingState;
@@ -1915,16 +1968,18 @@ void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
     // delete &_msg;
     unsigned char dat[3];
     unsigned char period[2];
+    int sleepingTimeInMs = 20;
 
-    // check if ready
+    // set syst. states command
+    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    _systStatesReadyForCommand=false;
+
+    // set flag for auto-update == true or false
     //
-    if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
-        return;
-    }
-    // prevent from sending other messages
-    //
-    _ready = false;
+    if(automaticUpdatesEnabled) {
+        _graspingStateAutoUpdates = true;
+    } else
+        _graspingStateAutoUpdates = false;
 
     // set Data array
     //
@@ -1963,11 +2018,4 @@ void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
 
     // unlock
     _msgMutex.unlock();
-
-    // set flag for auto-update == true or false
-    //
-    if(automaticUpdatesEnabled) {
-        _graspingStateAutoUpdates = true;
-    } else
-        _graspingStateAutoUpdates = false;
 }

@@ -84,4 +84,5 @@ class WSG50Observer
 {
 public:
     virtual void update(TRESPONSE * response);
+
 };

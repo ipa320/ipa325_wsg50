@@ -52,11 +52,12 @@ add_action_files(
 )
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
+add_message_files(
+    FILES
 #   Message1.msg
 #   Message2.msg
-# )
+    systState.msg
+)
 
 ## Generate services in the 'srv' folder
 #add_service_files(

@@ -10,13 +10,12 @@ class WSG50RosSubject
 public:
 
     /*
-     *  to be overloaded
      *  attach a new observer for a certain msg Id
      */
-    //virtual void Attach(WSG50RosObserver observer_, unsigned int msgId_);
     void Attach(WSG50RosObserver * observer_, unsigned int msgId_);
     void Detach(WSG50RosObserver * observer_, unsigned int msgId_);
 
 protected:
+    // map where the observers are stored by the keys they are assigned to.
     std::map< unsigned int, std::set<WSG50RosObserver * > > _observers;
 };

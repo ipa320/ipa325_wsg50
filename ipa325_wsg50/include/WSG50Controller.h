@@ -252,6 +252,7 @@ private:
     bool        _checkingCommunication,
                 _communicationOK,
                 _ready,
+                _systStatesReadyForCommand,
                 _widthAutoUpdate,
                 _speedAutoUpdate,
                 _forceAutoUpdate,
@@ -266,7 +267,8 @@ private:
                     _currentForceMutex,
                     _currentSpeedMutex,
                     _currentWidthMutex,
-                    _currentGraspingStateMutex;
+                    _currentGraspingStateMutex,
+                    _responseMutex;
 
     // run State-Machine
     //

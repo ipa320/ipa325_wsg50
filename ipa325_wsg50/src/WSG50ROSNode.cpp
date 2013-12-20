@@ -18,6 +18,10 @@
 #include <ipa325_wsg50/WSG50GraspPartAction.h>
 #include <ipa325_wsg50/WSG50ReleasePartAction.h>
 
+// Messages
+//
+#include <ipa325_wsg50/systState.h>
+
 // Services
 //
 
@@ -26,7 +30,7 @@
 #define DEBUG       true
 #define TIMEOUT     500         // in milliseconds
 #define TIMEFORWAITINGLOOP 20   // in milliseconds
-#define PUBLISHINGINTERVAL 10   // in Herz
+#define PUBLISHINGINTERVAL 20   // in Herz
 
 // Gripper Default Values
 //
@@ -36,7 +40,7 @@
 
 // local variables
 //
-bool            g_active = true;
+bool                        g_active = true;
 static WSG50Controller * _controller = NULL;
 
 /*
@@ -47,7 +51,9 @@ void mySigintHandler(int)
 {
     ROS_WARN("Received SIGINT!");
     g_active = false;
+    if(DEBUG) ROS_INFO("trying to delete controller");
     delete _controller;
+    if(DEBUG) ROS_INFO("Controller deleted!");
     _controller = 0;
 }
 
@@ -114,7 +120,7 @@ public:
     // homing action
     void doHoming()
     {
-        if(DEBUG) ROS_WARN("doHoming() called!!");
+        if(DEBUG) ROS_INFO("\n\n##########################\n##  Homing...\n##########################");
         goal_ = (unsigned int) homingserver_.acceptNewGoal()->direction;
         _controller->homing(goal_);
     }
@@ -184,6 +190,7 @@ public:
 
     void doPrePositionFingers()
     {
+        if(DEBUG) ROS_INFO("\n\n##########################\n##  Prepositoin Fingers\n##########################");
         // accept new goal and get values
         //
         ipa325_wsg50::WSG50PrePositionFingersGoalConstPtr goal;
@@ -266,6 +273,7 @@ public:
 
     void doGrasp()
     {
+        if(DEBUG) ROS_INFO("\n\n##########################\n##  Grasping...\n##########################");
         ipa325_wsg50::WSG50GraspPartGoalConstPtr goal = gpserver_.acceptNewGoal();
         width_ = goal->width;
         speed_ = goal->speed;
@@ -325,6 +333,7 @@ public:
 
     void doRelease()
     {
+        if(DEBUG) ROS_INFO("\n\n##########################\n##  Release Part...\n##########################");
         ipa325_wsg50::WSG50ReleasePartGoalConstPtr goal = rpserver_.acceptNewGoal();
         width_ = goal->openwidth;
         speed_ = goal->speed;
@@ -372,23 +381,46 @@ void publishStates()
     //
     ros::Rate r(PUBLISHINGINTERVAL);
 
-    // set update cycle
+    // subscribe to regular updates
     //
-    short updatePeriodInMs = 20;
-//    _controller->getOpeningWidthUpdates(false, true, updatePeriodInMs);
-//    if(!ready(TIMEOUT)) ROS_ERROR("timout occured while setting update rate for opening width");
-//    _controller->getSpeedUpdates(false, true, updatePeriodInMs);
-//    if(!ready(TIMEOUT)) ROS_ERROR("timeout occured while setting update rate for speed");
-//    _controller->getForceUpdates(false, true, updatePeriodInMs);
-//    if(!ready(TIMEOUT)) ROS_ERROR("timeout occured while setting update rate for force");
+    if(DEBUG) ROS_INFO("subscribing to autoupdates for width, speed, force and grasping state.");
+    int updatePeriodInMs = PUBLISHINGINTERVAL;
+    _controller->getOpeningWidthUpdates(false, true, updatePeriodInMs);
+    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    _controller->getSpeedUpdates(false, true, updatePeriodInMs);
+    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    _controller->getForceUpdates(false, true, updatePeriodInMs);
+    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    _controller->getGraspingStateUpdates(false, true, updatePeriodInMs);
+    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
 
+    // define publishers
+    //
+    ipa325_wsg50::systState systStateMsg;
+    ros::Publisher  statePublisher = node.advertise<ipa325_wsg50::systState>("system_state", 10);
 
     // start publishing loop
     //
-    while(ros::ok() && g_active) {
+    while(//ros::ok() &&
+          g_active
+          ) {
+
+        // check if ros is ok
+        if(!ros::ok()) {
+            ROS_ERROR("ros is not ok!");
+            break;
+        }
 
         // TODO
 
+        // fill message
+        //
+        systStateMsg.width = _controller->getWidth();
+        systStateMsg.speed = _controller->getSpeed();
+        systStateMsg.force = _controller->getForce();
+        systStateMsg.grasp_state = _controller->getGraspingState();
+        // publish
+        statePublisher.publish(systStateMsg);
 
         // spin once (for incomming messages)
         //
@@ -398,6 +430,12 @@ void publishStates()
         //
         r.sleep();
     }
+
+    if(!g_active) {
+        if(DEBUG) ROS_WARN("Received SIGINT! shut down publisher now.");
+    } else {
+        ROS_WARN("Shutting down publisher without SIGINT!");
+    }
 }
 
 /**
@@ -405,10 +443,6 @@ void publishStates()
  */
 int main(int argc, char** argv)
 {
-    // Declare variables
-    //
-
-
     // initialize ROS
     //
     ros::init(argc, argv, "WSG50Gripper");
@@ -417,6 +451,7 @@ int main(int argc, char** argv)
     // overwrite default sigint handler
     //
     signal(SIGINT, mySigintHandler);
+    g_active = true;
 
     // Initialize controller
     //
@@ -443,21 +478,14 @@ int main(int argc, char** argv)
     ROS_INFO("call publishStates() method");
     boost::thread t(publishStates);
 
-
     // TODO:
     // Subscribe to actions
     //
     ROS_INFO("subscribe to action-servers");
-    //WSG50HomingAction homing(ros::this_node::getName());
     WSG50HomingAction homing("WSG50Gripper_Homing");
     WSG50PrePositionFingersActionServer prepFingers("WSG50Gripper_PrePositionFingers");
     WSG50GraspPartActionServer gpserver("WSG50Gripper_GraspPartAction");
     WSG50ReleasePartActionServer rpserver("WSG50Gripper_ReleasePartAction");
-
-
-    // spin and send messages
-    //
-    //ros::spin(); // probably not necessary, since this is called in the publishStates method
 
     // disconnect
     //

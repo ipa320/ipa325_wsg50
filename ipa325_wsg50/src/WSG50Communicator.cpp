@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ros/ros.h>
-#include <string>
-
 #include <boost/thread/mutex.hpp>
+#include <boost/algorithm/string.hpp>
 
+using namespace boost;
+using namespace std;
 
 #define DEBUG true
 
@@ -22,6 +23,7 @@ boost::asio::io_service io_service;
 boost::asio::ip::tcp::resolver resolver(io_service);
 boost::asio::ip::tcp::socket sock(io_service);
 boost::array<char, 512> buffer;
+boost::array<std::string, 64> _splitMessages;
 
 using boost::asio::ip::tcp;
 
@@ -120,16 +122,6 @@ static short _GETFINGERDATA     = 0x63;     // return the current finger data fo
  * CLASS WSG50Communicator
  ***********************************/
 
-//WSG50Communicator::WSG50Communicator(void)
-//{
-//    if(DEBUG) ROS_INFO("WSG50Communicator()");
-
-//    // use default IP and Port
-//    //
-//    this->_IP = "192.168.1.20";
-//    this->_PORT = "1000";
-//}
-
 WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
 {
     if(DEBUG) ROS_INFO("WSG50Communicator(): IP=%s, PORT=%s", ip.c_str(), port.c_str());
@@ -177,7 +169,6 @@ void WSG50Communicator::startConnection(void)
         return;
     }
 
-
     // start separate thread for the connection
     //
     this->_keep_alive = true;
@@ -195,18 +186,12 @@ void WSG50Communicator::stopConnection(void)
         return;
     }
 
-    // TODO:
     // send Disconnect message
     //
     TMESSAGE msg;
     createDisconnectMessage(&msg);
 
     msg_send(&msg);
-//    if(result != E_SUCCESS) {
-//        ROS_ERROR("Error while disconnecting");
-//    } else {
-//        ROS_INFO("Ready to disconnect");
-//    }
 
     // set _keep_alive to false
     //
@@ -227,7 +212,10 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
     unsigned short  cmdId;
     TStat           statusCode;
     TRESPONSE       responseMsg;
+    TRESPONSE       *responseMsgs;
+    size_t          sizeOfMessages;
     unsigned char*  responseTCPBuffer;
+    bool            x;
 
     if(DEBUG) ROS_INFO("read_handler called... (length: %d)", (int) len);
 
@@ -238,41 +226,119 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
         sock.async_read_some(boost::asio::buffer( buffer ),
                              boost::bind(&WSG50Communicator::read_handler, this, _1, _2));
 
+        unsigned char* completeResponse = (unsigned char * ) buffer.c_array();
+        unsigned char* partResponse;
+        int bufflength, index, endPos, count = 0,
+                pos1 = 0, pos2 = 0, searchPos = 0;
+        unsigned char delimiter = 0xAA;
+
         // read response messages
         //
         responseTCPBuffer = (unsigned char * ) buffer.c_array();
         this->_respTCPBuffAllocated = true;
         if(DEBUG) this->printHexArray(responseTCPBuffer, len);
 
-        // create response message
-        responseMsg = createTRESPONSE(responseTCPBuffer, len);
-        if(DEBUG) printTRESPONSE(responseMsg);
+        pos1 = findOccurence(completeResponse, len, delimiter, searchPos);
+        while(pos1 != -1 && count < 200)
+        {
+            searchPos = pos1 + 4;
+            pos2 = findOccurence(completeResponse, len, delimiter, searchPos);
 
-//        statusCode = (TStat) response[6];
-
-        // switch through different status codes and print error messages
-        //
-        if(responseMsg.status_code != E_SUCCESS) {
-            printErrorCode(responseMsg.status_code);
-        } else {
-            if(DEBUG) ROS_INFO("read_handler: message read; status code = E_SUCCESS. MsgId = 0x%02X", responseMsg.id);
-        }
-
-        // if msg command id was 0x07 (disconnect message), then stop io_service
-        //
-        if(responseMsg.id == 0x07) {
-            if(DEBUG) std::cout << "received disconnect response." << std::endl;
-            if(responseMsg.status_code == E_SUCCESS) {
-                ROS_WARN("Received successfull disconnect response!\n");
-                io_service.stop();
+            // check if this is the last occurence
+            //
+            if((pos2 <= pos1 || pos2 <= 0) && len > pos1 && pos1 >= 0) {
+                // get the length of the message
+                //
+                if(DEBUG) cout << "last occurence!" << endl;
+                bufflength = len-pos1;
+            }
+            else if(pos1 >= 0 && pos2 > pos1)    // this is not the last occurence
+            {
+                if(DEBUG) cout << "there is another message afterwards" << endl;
+                // get the length of the message
+                //
+                bufflength = pos2-pos1;
             } else {
+                if(DEBUG) cout << "blöder fehler!!" << endl;
+                bufflength = 0;
+                return;
+            }
+
+            // debug
+            if(DEBUG) cout << "msgnr = " << count << ", pos1 = " << pos1 << ", pos2 = " << pos2 << ", length = " << bufflength << endl;
+
+            if(pos1 < 0 || pos2 <= 0) {
+                if(DEBUG) cout << "blöder fehler 2" << endl;
+                return;
+            }
+
+            // allocate char array
+            //
+            partResponse = new unsigned char[bufflength];
+
+            // copy the message content
+            //
+            endPos = pos1 + bufflength;
+            index = 0;
+            for(int i = pos1; i < endPos; i++) {
+                partResponse[index] = completeResponse[i];
+                index++;
+            }
+
+//            if(DEBUG) {
+//                cout << "message part: ";
+//                printHexArray(partResponse, bufflength);
+//            }
+
+
+            responseMsg = createTRESPONSE(partResponse, bufflength);
+            if(DEBUG) printTRESPONSE(responseMsg);
+
+    //        statusCode = (TStat) response[6];
+
+            // switch through different status codes and print error messages
+            //
+            if(responseMsg.status_code != E_SUCCESS) {
                 printErrorCode(responseMsg.status_code);
             }
-        }
+//            else {
+//                if(DEBUG) ROS_INFO("read_handler: message read; status code = E_SUCCESS. MsgId = 0x%02X", responseMsg.id);
+//            }
 
-        // always call Observer and hand over response message
-        //
-        _observer->update(&responseMsg);
+            // if msg command id was 0x07 (disconnect message), then stop io_service
+            //
+            if(responseMsg.id == 0x07) {
+                if(DEBUG) std::cout << "received disconnect response." << std::endl;
+                if(responseMsg.status_code == E_SUCCESS) {
+                    ROS_WARN("Received successfull disconnect response!\n");
+                    io_service.stop();
+                } else {
+                    printErrorCode(responseMsg.status_code);
+                }
+
+                // jump out of the loop
+                //
+                delete[] partResponse;
+                break;
+            }
+
+            // always call Observer and hand over response message
+            //
+            _observer->update(&responseMsg);
+
+
+            // free memory
+            //
+            delete[] partResponse;
+
+            // set new pos1
+            if(pos2 > 0 && pos2 > pos1 && pos1 != -1)
+                pos1 = pos2;
+            else
+                break;
+
+            count++;
+        }
 
 
         // TODO: free responseMsg.data
@@ -629,17 +695,6 @@ void WSG50Communicator::createDisconnectMessage(TMESSAGE * msg)
     msg->id = _DISCONNECT;
     msg->data = NULL;
     msg->length = 0;
-
-    // test error message
-    // this disconnect message hat one parameter, but 0 parameters expected.
-    // expected error-code: 0Ch
-    //
-//    msg->id = _DISCONNECT;
-//    msg->data = NULL;
-//    msg->length = 1;
-//    boost::array<unsigned char, 1> data;
-//    data[0] = 0xff;
-//    msg->data = data.c_array();
 }
 
 
@@ -663,8 +718,6 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
     unsigned char * _dat;
     int length;
 
-//    printf("LENGTH: %lu\n", len);
-
     // get Command ID
     //
     respMsg.id = data[3];
@@ -672,7 +725,6 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
     // get data size
     //
     respMsg.length = (((data[5] & 0xff) << 8) | ((data[4] & 0xff))) - 2; // -2, because the statuscode takes the first two bytes
-//    printf("tresponse size: %d\n", response.length);
 
     // get Status Code
     //
@@ -680,9 +732,6 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
 
     // check if given tcp length is less than length given in message
     //
-//    printf("check response lengths:\n");
-//    printf("len: %lu\n", len);
-//    printf("resp.l: %d\n", response.length);
     if((int) respMsg.length != ((int) (TCPPacketLength - 10)))
     {
         ROS_ERROR("Length of response TCP-message does not match announced data-length!");
@@ -702,8 +751,6 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
         respMsg.data = _dat;
         this->_respMsgDataAllocated = true;
     }
-
-//    if(DEBUG) printTRESPONSE(response);
 
     return respMsg;
 }
@@ -729,5 +776,25 @@ void WSG50Communicator::printTRESPONSE(TRESPONSE msg)
     } else {
         std::cout << "\t# no data!" << std::endl;
     }
-    std::cout << std::endl << "\t#####################" << std::endl;
+    std::cout << std::endl << "\t#####################" << std::dec << std::endl;
+}
+
+
+int WSG50Communicator::findOccurence(unsigned char *ar, int length, unsigned char delimiter, int startPos)
+{
+    if(DEBUG) {
+        cout << "findOccurence():: lenght of array = " << length << "; delimiter = " << std::hex << delimiter << std::dec << "; starting Position = " << startPos << endl;
+    }
+
+    int returnValue = -1;
+
+    if(startPos >= length) return returnValue;
+
+    for(int i=startPos; i<length; i++) {
+        if(ar[i] == delimiter) returnValue = i;
+    }
+
+    if(DEBUG) cout << "findOccurence():: returnvalue = " << returnValue << endl;
+
+    return returnValue;
 }

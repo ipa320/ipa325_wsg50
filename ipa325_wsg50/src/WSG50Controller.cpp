@@ -564,7 +564,22 @@ void WSG50Controller::updateHandler(void)
             _systStatesReadyForCommand = true;
         }
         break;
-    case 0x43:
+    case 0x41:  // get Grasping State
+        if(resp.status_code == E_SUCCESS) {
+            // read grasping state
+            unsigned char tmp;
+            _currentGraspingStateMutex.lock();
+            memcpy(&tmp, resp.data, sizeof(unsigned char));
+            _currentGraspingStateMutex.unlock();
+            _currentGraspingState = (int) tmp;
+            _systStatesReadyForCommand = true;
+        } else {
+            ROS_ERROR("GET GRASPING STATE response: Unexpected Error: Command length mismatch");
+            _wsgComm->printErrorCode(resp.status_code);
+            _systStatesReadyForCommand = true;
+        }
+        break;
+    case 0x43:  // get opening width
         if(resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET OPENING WIDTH response: Success!");
             if(resp.length == 4) {
@@ -585,7 +600,7 @@ void WSG50Controller::updateHandler(void)
             _systStatesReadyForCommand = true;
         }
         break;
-    case 0x44:
+    case 0x44:  // get speed
         if(resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET SPEED response: Success!");
             if(resp.length == 4) {
@@ -606,7 +621,7 @@ void WSG50Controller::updateHandler(void)
             _systStatesReadyForCommand = true;
         }
         break;
-    case 0x45:
+    case 0x45:  // get Force
         if(resp.status_code == E_SUCCESS) {
             // ROS_INFO("GET FORCE response: Success!");
             if(resp.length == 4) {
@@ -656,12 +671,12 @@ void WSG50Controller::notifyObserver(unsigned int msgId, TRESPONSE * resp)
     std::set< WSG50RosObserver *>::iterator setIt;
     std::set< WSG50RosObserver *> observerSet;
 
-    if(DEBUG
-            && resp->id != 0x43     // dont print message if response is from width, speed or force stats
-            && resp->id != 0x44
-            && resp->id != 0x45) {
-        ROS_WARN("notify observer for message: %02X", msgId);
-    }
+//    if(DEBUG
+//            && resp->id != 0x43     // dont print message if response is from width, speed or force stats
+//            && resp->id != 0x44
+//            && resp->id != 0x45) {
+//        ROS_WARN("notify observer for message: %02X", msgId);
+//    }
 
     // check if there is an observer for this msgid
     //
@@ -672,7 +687,7 @@ void WSG50Controller::notifyObserver(unsigned int msgId, TRESPONSE * resp)
         it = this->_observers.find(msgId);
         observerSet = it->second;
 
-        if(DEBUG && resp->id != 0x43) ROS_INFO("There are %d observers subscribed:", (int) observerSet.size());
+//        if(DEBUG && resp->id != 0x43) ROS_INFO("There are %d observers subscribed:", (int) observerSet.size());
 
         // loop through the set and update all observers
         //
@@ -687,14 +702,14 @@ void WSG50Controller::notifyObserver(unsigned int msgId, TRESPONSE * resp)
             observer->update(resp);
         }
     } // else, if there is no set of observers for this message id
-    else {
-        if(DEBUG
-                && resp->id != 0x43
-                && resp->id != 0x44
-                && resp->id != 0x45) {
-            ROS_INFO("There is no observer subscribed for this message id.");
-        }
-    }
+//    else {
+//        if(DEBUG
+//                && resp->id != 0x43
+//                && resp->id != 0x44
+//                && resp->id != 0x45) {
+//            ROS_INFO("There is no observer subscribed for this message id.");
+//        }
+//    }
 }
 
 
@@ -1096,6 +1111,7 @@ void WSG50Controller::release(float openWidth, float speed)
     int i, graspingState;
     unsigned char data[8];
     unsigned char tmpFloat[4];
+    bool    stateOK = false;
 
 
     // check if ready
@@ -1111,11 +1127,17 @@ void WSG50Controller::release(float openWidth, float speed)
     // check Gripper State
     //
     graspingState = getGraspingState();
-    if(graspingState != 2           // no part found
-            || graspingState != 4   // holding
-            || graspingState != 3)  // part lost
+    if(graspingState == 2           // no part found
+            || graspingState == 4   // holding
+            || graspingState == 3)  // part lost
     {
+        stateOK = true;
+    } else
+    {
+        stateOK = false;
         ROS_ERROR("Wrong grasping state, can't release part! \nCurrent grasping state is: %d", graspingState);
+        // TODO:
+        // send feedback to ros client
         return;
     }
 
@@ -1954,7 +1976,6 @@ int WSG50Controller::getGraspingState()
     _currentGraspingStateMutex.lock();
     gstate = _currentGraspingState;
     _currentGraspingStateMutex.unlock();
-    if(DEBUG) ROS_INFO("Grasping state is: %d", gstate);
     return gstate;
 }
 
@@ -2008,7 +2029,7 @@ void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
 
     // create message
     //
-    _msg.id = _GETWIDTH;
+    _msg.id = _GETGRASPSTATE;
     _msg.length = 3;
     _msg.data = dat;
 

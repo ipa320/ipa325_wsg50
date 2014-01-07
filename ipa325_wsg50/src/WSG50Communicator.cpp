@@ -1,15 +1,23 @@
 #include "WSG50Communicator.h"
 #include <iostream>
 #include <stdio.h>
+#include <fstream>
 #include <stdlib.h>
 #include <ros/ros.h>
 #include <boost/thread/mutex.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
 
 using namespace boost;
 using namespace std;
 
-#define DEBUG true
+#define DEBUG       3
+#define INFO        2
+#define WARN        1
+#define ERROR       0
+#define LOGLEVEL    0
+#define LOGFILEPATH "/home/rfa-fr/florian_ws/logs/comm_log.txt"
 
 #ifndef SER_MSG_NUM_HEADER_BYTES
 #define SER_MSG_NUM_HEADER_BYTES    3       //!< number of header bytes
@@ -124,8 +132,9 @@ static short _GETFINGERDATA     = 0x63;     // return the current finger data fo
 
 WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
 {
-    if(DEBUG) ROS_INFO("WSG50Communicator(): IP=%s, PORT=%s", ip.c_str(), port.c_str());
-
+    std::stringstream msg;
+    msg << "WSG50Communicator(): IP = " << ip.c_str() << ", PORT = " << port.c_str();
+    log(INFO, msg.str());
     // set ip and port
     //
     this->_IP = ip;
@@ -145,12 +154,13 @@ WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
  */
 WSG50Communicator::~WSG50Communicator(void)
 {
-    if(DEBUG) ROS_INFO("\n\n###########################################\n# Closing down\n");
+    logmsg.str("");
+    logmsg << "\n\n###########################################\n# Closing down";
+    log(WARN, logmsg.str());
 
     // stop and release connection
     //
     stopConnection();
-
 }
 
 /*
@@ -215,63 +225,86 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
     TRESPONSE       *responseMsgs;
     size_t          sizeOfMessages;
     unsigned char*  responseTCPBuffer;
+    unsigned char*  completeResponse = (unsigned char * ) buffer.c_array();
+    unsigned char*  partResponse;
     bool            x;
+    int             bufflength,
+                    index,
+                    endPos,
+                    count = 0,
+                    pos1 = 0, pos2 = 0, searchPos = 0;
+    unsigned char   delimiter[] = {0xAA, 0xAA, 0xAA};
 
-    if(DEBUG) ROS_INFO("read_handler called... (length: %d)", (int) len);
+    std::stringstream err;
+
+//    if(DEBUG) ROS_INFO("read_handler called... (length: %d)", (int) len);
 
     if(!ec)
     {
-        // read next
+        logmsg.str("");
+
+        // ***************************************************
+        // read next data packet from tcp socket
         //
         sock.async_read_some(boost::asio::buffer( buffer ),
                              boost::bind(&WSG50Communicator::read_handler, this, _1, _2));
 
-        unsigned char* completeResponse = (unsigned char * ) buffer.c_array();
-        unsigned char* partResponse;
-        int bufflength, index, endPos, count = 0,
-                pos1 = 0, pos2 = 0, searchPos = 0;
-        unsigned char delimiter = 0xAA;
-
-        // read response messages
+        // convert message into array
         //
         responseTCPBuffer = (unsigned char * ) buffer.c_array();
         this->_respTCPBuffAllocated = true;
-        if(DEBUG) this->printHexArray(responseTCPBuffer, len);
+//        if(DEBUG) this->printHexArray(responseTCPBuffer, len);
 
-        pos1 = findOccurence(completeResponse, len, delimiter, searchPos);
+//        logmsg << std::hex << std::string((char *) responseTCPBuffer, 0, len).c_str() << std::dec << endl;
+
+        // *****************************************************
+        // split response into single messages
+        // this is necessary, because the tcp-socket may deliver concatenated messages instead of single messages
+        //
+        pos1 = findOccurence(completeResponse, len, delimiter, 3, searchPos);
+        logmsg << "first occurence of the delimiter at index = " << pos1 << std::endl;
         while(pos1 != -1 && count < 200)
         {
             searchPos = pos1 + 4;
-            pos2 = findOccurence(completeResponse, len, delimiter, searchPos);
+            pos2 = findOccurence(completeResponse, len, delimiter, 3, searchPos);
+
+            logmsg << "loop-count = " << count << "; found second occurence at index = " << pos2 << std::endl;
 
             // check if this is the last occurence
             //
             if((pos2 <= pos1 || pos2 <= 0) && len > pos1 && pos1 >= 0) {
                 // get the length of the message
                 //
-                if(DEBUG) cout << "last occurence!" << endl;
                 bufflength = len-pos1;
             }
             else if(pos1 >= 0 && pos2 > pos1)    // this is not the last occurence
             {
-                if(DEBUG) cout << "there is another message afterwards" << endl;
                 // get the length of the message
                 //
                 bufflength = pos2-pos1;
             } else {
-                if(DEBUG) cout << "blöder fehler!!" << endl;
+                err.str("");
+                err << "Bad ERROR in communication!";
+                log(ERROR, err.str());
+
                 bufflength = 0;
                 return;
             }
 
             // debug
-            if(DEBUG) cout << "msgnr = " << count << ", pos1 = " << pos1 << ", pos2 = " << pos2 << ", length = " << bufflength << endl;
+            logmsg << "msgnr = " << count << ", pos1 = " << pos1 << ", pos2 = " << pos2 << ", length = " << bufflength << endl;
 
-            if(pos1 < 0 || pos2 <= 0) {
-                if(DEBUG) cout << "blöder fehler 2" << endl;
+            // probably unneccesary
+            if(bufflength <= 0) {
+                err.str("");
+                err << "blöder fehler: Bufferlength zu klein!";
+                log(ERROR, err.str());
                 return;
             }
 
+
+            // *****************************************************
+            // write this part of the message into an separate array
             // allocate char array
             //
             partResponse = new unsigned char[bufflength];
@@ -285,30 +318,26 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
                 index++;
             }
 
-//            if(DEBUG) {
-//                cout << "message part: ";
-//                printHexArray(partResponse, bufflength);
-//            }
 
-
+            // *****************************************************
+            // create TRESPONSE Message
+            //
             responseMsg = createTRESPONSE(partResponse, bufflength);
-            if(DEBUG) printTRESPONSE(responseMsg);
-
-    //        statusCode = (TStat) response[6];
+//            if(DEBUG) printTRESPONSE(responseMsg);
 
             // switch through different status codes and print error messages
             //
-            if(responseMsg.status_code != E_SUCCESS) {
+            if(responseMsg.status_code != E_SUCCESS && DEBUG) {
                 printErrorCode(responseMsg.status_code);
             }
-//            else {
-//                if(DEBUG) ROS_INFO("read_handler: message read; status code = E_SUCCESS. MsgId = 0x%02X", responseMsg.id);
-//            }
 
+            // ******************************************************
+            // if DISCONNECT response
             // if msg command id was 0x07 (disconnect message), then stop io_service
+            // and delete communication
             //
             if(responseMsg.id == 0x07) {
-                if(DEBUG) std::cout << "received disconnect response." << std::endl;
+                logmsg << "received disconnect response." << std::endl;
                 if(responseMsg.status_code == E_SUCCESS) {
                     ROS_WARN("Received successfull disconnect response!\n");
                     io_service.stop();
@@ -322,16 +351,21 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
                 break;
             }
 
+            // ******************************************************
             // always call Observer and hand over response message
             //
             _observer->update(&responseMsg);
 
 
+            // ******************************************************
             // free memory
+            // and prepare for next message
             //
             delete[] partResponse;
 
             // set new pos1
+            // new position 1 is the position of the next occurence, e.g. pos2
+            //
             if(pos2 > 0 && pos2 > pos1 && pos1 != -1)
                 pos1 = pos2;
             else
@@ -356,6 +390,9 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 //        }
 //        if(DEBUG) std::cout << "deleted response" << std::endl;
 
+
+        log(DEBUG, logmsg.str());
+
     } else {
         ROS_ERROR("an error occured when the read_handler was called");
         std::cout << ec.message() << std::endl;
@@ -364,7 +401,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 
 void WSG50Communicator::connect_handler(const boost::system::error_code &ec)
 {
-    if(DEBUG) ROS_INFO("connect_handler called...");
+//    if(DEBUG) ROS_INFO("connect_handler called...");
 
     if(!ec)
     {
@@ -380,7 +417,7 @@ void WSG50Communicator::connect_handler(const boost::system::error_code &ec)
 void WSG50Communicator::resolve_handler(const boost::system::error_code &ec,
                      boost::asio::ip::tcp::resolver::iterator it)
 {
-    if(DEBUG) ROS_INFO("resolve_handler called...");
+//    if(DEBUG) ROS_INFO("resolve_handler called...");
 
     if (!ec)
     {
@@ -436,10 +473,10 @@ void WSG50Communicator::pushMessage(TMESSAGE *msg)
         return;
     }
 
-    if(DEBUG) {
-        std::cout << "Push TCP message: ";
-        this->printHexArray(WSGBUF, WSGSIZE);
-    }
+//    if(DEBUG) {
+//        std::cout << "Push TCP message: ";
+//        this->printHexArray(WSGBUF, WSGSIZE);
+//    }
 
     // write buffer
     //
@@ -588,27 +625,22 @@ Pointer to the message that should be sent
 */
 bool WSG50Communicator::msg_send(TMESSAGE * msg )
 {
-    boost::system::error_code error;
-
     // Convert message into byte sequence:
     WSGBUF = msg_build( msg, &WSGSIZE );
     if ( !WSGBUF ) return( E_INSUFFICIENT_RESOURCES );
 
     // Transmit buffer:
     //
-    if(DEBUG) ROS_INFO("Send tcp message.");
+//    if(DEBUG) ROS_INFO("Send tcp message.");
     boost::asio::write(sock, boost::asio::buffer(WSGBUF, WSGSIZE));
 
     // Free allocated memory:
-    if(DEBUG) std::cout << "buffer size: " << WSGSIZE << std::endl;
+//    if(DEBUG) std::cout << "buffer size: " << WSGSIZE << std::endl;
     if(WSGSIZE > 0 && WSGBUF != 0) {
         delete[] WSGBUF;
         WSGBUF = 0;
         WSGSIZE = 0; // null pointer
     }
-
-//    if ( c != 1 ) return( E_WRITE_ERROR );
-
     return true;
 }
 
@@ -633,11 +665,8 @@ unsigned short WSG50Communicator::checksum_update_crc16( unsigned char *data,
 {
     unsigned long c;
     /* process each byte prior to checksum field */
-    for ( c=0; c < size; c++ )
-    {
-        crc = CRC_TABLE[ ( crc ^ *( data ++ )) & 0x00FF ] ^ ( crc >> 8 );
-    }
-    return( crc );
+    for ( c=0; c < size; c++ ) {crc = CRC_TABLE[ ( crc ^ *( data ++ )) & 0x00FF ] ^ ( crc >> 8 );}
+    return crc;
 }
 
 
@@ -730,11 +759,16 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
     //
     respMsg.status_code = (TStat) (((data[7] & 0xff) << 8) | ((data[6] & 0xff)));
 
+    respMsg.data = 0;
+
     // check if given tcp length is less than length given in message
     //
     if((int) respMsg.length != ((int) (TCPPacketLength - 10)))
     {
-        ROS_ERROR("Length of response TCP-message does not match announced data-length!");
+        ROS_ERROR("1 Length of response TCP-message does not match announced data-length!");
+        ROS_ERROR("2 actual length = %d, announced data-length = %d", ((int) TCPPacketLength -10), (int) respMsg.length);
+        printHexArray(data, TCPPacketLength);
+        respMsg.length = 0;
         return respMsg;
     }
 
@@ -779,22 +813,85 @@ void WSG50Communicator::printTRESPONSE(TRESPONSE msg)
     std::cout << std::endl << "\t#####################" << std::dec << std::endl;
 }
 
-
+// find the first occurence of a certain delimiter inside an unsigned char array
+//
 int WSG50Communicator::findOccurence(unsigned char *ar, int length, unsigned char delimiter, int startPos)
 {
-    if(DEBUG) {
-        cout << "findOccurence():: lenght of array = " << length << "; delimiter = " << std::hex << delimiter << std::dec << "; starting Position = " << startPos << endl;
-    }
-
     int returnValue = -1;
-
     if(startPos >= length) return returnValue;
-
     for(int i=startPos; i<length; i++) {
-        if(ar[i] == delimiter) returnValue = i;
+        if(ar[i] == delimiter) {
+            returnValue = i;
+            break;}
     }
-
-    if(DEBUG) cout << "findOccurence():: returnvalue = " << returnValue << endl;
-
     return returnValue;
+}
+
+// find the first occurence of a certain delimiter inside an unsigned char array
+//
+int WSG50Communicator::findOccurence(unsigned char *ar,
+                                     int length,
+                                     unsigned char *delimiter,
+                                     int delimiterLength,
+                                     int startPos)
+{
+    int returnValue = -1, pos=0;
+    bool failure=true;
+    if(startPos >= length) return returnValue;
+    for(int i=startPos; i<length; i++) {
+        if(ar[i] == delimiter[0]) {
+            // if the first delimiter matches, check if the other delimiters match too
+            //
+            failure=false;
+            for(int j=0;j<delimiterLength;j++) {
+                pos = i+j;
+                if(delimiter[j] != ar[pos]) {
+                    failure = true;
+                    break;}
+            }
+            if(!failure) {
+                returnValue = i;
+            }
+            break;
+        }
+    }
+    return returnValue;
+}
+
+
+// write into a log file
+//
+void WSG50Communicator::log(int logLevel, const string &msg)
+{
+    bool fileExists;
+    FILE* logFile;
+    boost::posix_time::time_facet *time = new boost::posix_time::time_facet("%H:%M:%S");
+
+    // check log-levels
+    //
+    if(logLevel <= LOGLEVEL) {
+        // check if logfile exists
+        logFile = fopen(LOGFILEPATH, "r");
+        if(logFile) {
+            fileExists = true;
+            fclose(logFile);
+        } else {
+            cout << "log-file does not exist" << endl;
+            fileExists = false;
+        }
+
+        // try opening file,
+        // if file does not exist, create new file
+        if(fileExists) {
+            logFile = fopen(LOGFILEPATH, "a+");
+        } else{
+            logFile = fopen(LOGFILEPATH, "w");
+        }
+        // create log-string
+        std::stringstream logstr;
+        logstr << boost::posix_time::second_clock::local_time();
+        logstr << "\t LOG: " <<  logLevel << "\t " << msg;
+        fprintf(logFile, "%s\n", logstr.str().c_str());
+        fclose(logFile);
+    }
 }

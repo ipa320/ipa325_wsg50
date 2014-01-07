@@ -80,7 +80,7 @@ public:
 
     void            printErrorCode(TStat ec);
 
-
+    void            log(int logLevel, const std::string &msg);
 
 
 
@@ -102,6 +102,7 @@ public:
 private:
     std::string _IP;
     std::string _PORT;
+    std::stringstream logmsg;
 
     bool        _checkingConnection;
 
@@ -152,6 +153,7 @@ private:
     void            printTRESPONSE(TRESPONSE msg);
 
     int             findOccurence(unsigned char* ar, int length, unsigned char delimiter, int startPos);
+    int             findOccurence(unsigned char* ar, int length, unsigned char* delimiter, int delimiterLength, int startPos);
 
     /**
      * threading

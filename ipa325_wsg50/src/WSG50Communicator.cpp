@@ -253,7 +253,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
         //
         responseTCPBuffer = (unsigned char * ) buffer.c_array();
         this->_respTCPBuffAllocated = true;
-//        if(DEBUG) this->printHexArray(responseTCPBuffer, len);
+        if(DEBUG) this->printHexArray(responseTCPBuffer, len);
 
 //        logmsg << std::hex << std::string((char *) responseTCPBuffer, 0, len).c_str() << std::dec << endl;
 
@@ -262,13 +262,11 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
         // this is necessary, because the tcp-socket may deliver concatenated messages instead of single messages
         //
         pos1 = findOccurence(completeResponse, len, delimiter, 3, searchPos);
-        logmsg << "first occurence of the delimiter at index = " << pos1 << std::endl;
+        if(DEBUG) ROS_INFO("first occurence of the delimiter at index = %d", pos1);
         while(pos1 != -1 && count < 200)
         {
             searchPos = pos1 + 4;
             pos2 = findOccurence(completeResponse, len, delimiter, 3, searchPos);
-
-            logmsg << "loop-count = " << count << "; found second occurence at index = " << pos2 << std::endl;
 
             // check if this is the last occurence
             //
@@ -291,8 +289,8 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
                 return;
             }
 
-            // debug
-            logmsg << "msgnr = " << count << ", pos1 = " << pos1 << ", pos2 = " << pos2 << ", length = " << bufflength << endl;
+            if(DEBUG) ROS_INFO("loop-count = %d; found second occurence at index = %d; msg length = %d", count, pos2, bufflength);
+
 
             // probably unneccesary
             if(bufflength <= 0) {
@@ -318,12 +316,35 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
                 index++;
             }
 
+            // *****************************************************
+            // set new pos1
+            // new position 1 is the position of the next occurence, e.g. pos2
+            //
+            if(pos2 > 0 && pos2 > pos1 && pos1 != -1)
+                pos1 = pos2;
+            else
+                pos2 = -1;
+
+            count++;
+
 
             // *****************************************************
             // create TRESPONSE Message
             //
             responseMsg = createTRESPONSE(partResponse, bufflength);
 //            if(DEBUG) printTRESPONSE(responseMsg);
+
+            // check if response-message-length == -1, then there was an error creating the message
+            if(responseMsg.length == -1) {
+                ROS_ERROR("could not create TRESPONSE. continue");
+                delete[] partResponse;
+
+                if(pos2 != -1) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
 
             // switch through different status codes and print error messages
             //
@@ -337,7 +358,6 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
             // and delete communication
             //
             if(responseMsg.id == 0x07) {
-                logmsg << "received disconnect response." << std::endl;
                 if(responseMsg.status_code == E_SUCCESS) {
                     ROS_WARN("Received successfull disconnect response!\n");
                     io_service.stop();
@@ -362,16 +382,6 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
             // and prepare for next message
             //
             delete[] partResponse;
-
-            // set new pos1
-            // new position 1 is the position of the next occurence, e.g. pos2
-            //
-            if(pos2 > 0 && pos2 > pos1 && pos1 != -1)
-                pos1 = pos2;
-            else
-                break;
-
-            count++;
         }
 
 
@@ -389,9 +399,6 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 //            response = 0;
 //        }
 //        if(DEBUG) std::cout << "deleted response" << std::endl;
-
-
-        log(DEBUG, logmsg.str());
 
     } else {
         ROS_ERROR("an error occured when the read_handler was called");
@@ -747,6 +754,15 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
     unsigned char * _dat;
     int length;
 
+    // check if message has minimum length
+    //
+    if(TCPPacketLength < 8) {
+        // at least parts of the status-code is missing
+        ROS_ERROR("response message incomplete! ignoring message");
+        respMsg.length = -1;
+        return respMsg;
+    }
+
     // get Command ID
     //
     respMsg.id = data[3];
@@ -768,7 +784,7 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
         ROS_ERROR("1 Length of response TCP-message does not match announced data-length!");
         ROS_ERROR("2 actual length = %d, announced data-length = %d", ((int) TCPPacketLength -10), (int) respMsg.length);
         printHexArray(data, TCPPacketLength);
-        respMsg.length = 0;
+        respMsg.length = -1;
         return respMsg;
     }
 

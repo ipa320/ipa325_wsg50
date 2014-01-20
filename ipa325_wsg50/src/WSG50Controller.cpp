@@ -296,30 +296,12 @@ void WSG50Controller::setupConnection()
  */
 void WSG50Controller::update(TRESPONSE * resp)
 {
-    // declare variables
-    //
-    int l, i;
-
     // lock response
     _responseMutex.lock();
 
-    // copy id, length and status code
-    _resp.id = resp->id;
-    _resp.length = resp->length;
-    _resp.status_code = resp->status_code;
-
-    // assign memory
+    // push current response into the queue
     //
-    l = (int) _resp.length;
-    _dat = new unsigned char[l];
-    if(_resp.length > 0)
-    {
-        for(i=0; i<l; i++)
-        {
-            _dat[i] = resp->data[i];
-        }
-    }
-    _resp.data = _dat;
+    _responseQueue.push(*resp);
 
     // unlock
     _responseMutex.unlock();
@@ -327,20 +309,31 @@ void WSG50Controller::update(TRESPONSE * resp)
     // call updateHandler in new thread
     //
     boost::thread(boost::bind(&WSG50Controller::updateHandler, this));
-//    if(DEBUG) ROS_INFO("call WSG50Controller::updateHandler");
 }
 
 
 void WSG50Controller::updateHandler(void)
 {
+    // declare variables
+    TRESPONSE resp;
+
     if(false) {
         ROS_INFO("Controller::updateHandler(): called.");
         ROS_INFO("Controller::updateHandler(): Response Status Id: %02X", _resp.id);
         ROS_INFO("Controller::updateHandler(): Response Data Length: %d", _resp.length);
+        _wsgComm->printHexArray(_resp.data, _resp.length);
     }
 
+    // copy data into internal TRESPONSE message.
+    //
     _responseMutex.lock();
-    TRESPONSE resp = _resp;
+
+    // get tresponse message from queue
+    if(!_responseQueue.empty()) {
+        resp = _responseQueue.front();
+        _responseQueue.pop();
+    }
+    // unlock mutex
     _responseMutex.unlock();
 
     switch (resp.id) {
@@ -801,14 +794,13 @@ bool WSG50Controller::isCommunicationOk()
 }
 
 
+
 /**
  *  ####################################
  *  ###### MOTION CONTROL       ########
  *  ####################################
  *
  */
-
-
 
 /*
  *  STOP

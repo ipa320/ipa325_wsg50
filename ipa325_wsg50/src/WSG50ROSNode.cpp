@@ -122,7 +122,12 @@ public:
     {
         if(DEBUG) ROS_INFO("\n\n##########################\n##  Homing...\n##########################");
         goal_ = (unsigned int) homingserver_.acceptNewGoal()->direction;
-        _controller->homing(goal_);
+        int movementDirection = 0;
+        if(goal_ == true)
+            movementDirection = 1;
+        else
+            movementDirection = 2;
+        _controller->homing(movementDirection);
     }
 
 
@@ -394,6 +399,8 @@ void publishStates()
     _controller->getGraspingStateUpdates(false, true, updatePeriodInMs);
     boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
 
+    ROS_INFO("publishStates(): subscribed to updates of 'widht', 'speed', 'force', 'grasping state'");
+
     // define publishers
     //
     ipa325_wsg50::systState systStateMsg;
@@ -477,6 +484,9 @@ int main(int argc, char** argv)
     //
     ROS_INFO("call publishStates() method");
     boost::thread t(publishStates);
+
+    // wait XX miliseconds, so the publishing-cycle can get active
+    boost::this_thread::sleep(boost::posix_time::millisec(500));
 
     // TODO:
     // Subscribe to actions

@@ -31,6 +31,7 @@
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 #include <boost/thread.hpp>
+#include <queue>
 #include <string>
 
 
@@ -244,6 +245,7 @@ private:
 
     TMESSAGE    _msg;
     TRESPONSE   _resp;
+    std::queue<TRESPONSE> _responseQueue;
     SSTATE      _systemState;
 
     WSG50Communicator   *_wsgComm;

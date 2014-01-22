@@ -74,7 +74,7 @@ typedef struct {
 typedef struct
 {
     unsigned char id;
-    unsigned short length;
+    short length;
     TStat status_code;
     unsigned char *data;
 } TRESPONSE;

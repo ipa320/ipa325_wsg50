@@ -15,6 +15,7 @@
 #include "WSG50Subject.h"
 #include "WSG50Observer.h"
 
+#define MSGBUFFERSIZE 500
 
 //! Typedef for Callback methods
 //!
@@ -110,6 +111,8 @@ private:
     TMESSAGE _msg;              // raw message
     unsigned char *WSGBUF;      // write-buffer
     unsigned int WSGSIZE;       // size of the write buffer
+    unsigned char _iMsgBuffer[MSGBUFFERSIZE];
+    int         _iMsgBufferSize;
 
 
     // variables to check which data is allocated and what is freed
@@ -154,6 +157,8 @@ private:
 
     int             findOccurence(unsigned char* ar, int length, unsigned char delimiter, int startPos);
     int             findOccurence(unsigned char* ar, int length, unsigned char* delimiter, int delimiterLength, int startPos);
+
+    void            clearIMsgBuffer();
 
     /**
      * threading

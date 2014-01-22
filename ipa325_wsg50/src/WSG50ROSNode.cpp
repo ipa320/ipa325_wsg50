@@ -123,7 +123,7 @@ public:
         if(DEBUG) ROS_INFO("\n\n##########################\n##  Homing...\n##########################");
         goal_ = (unsigned int) homingserver_.acceptNewGoal()->direction;
         int movementDirection = 0;
-        if(goal_ == true)
+        if(goal_ == 1)
             movementDirection = 1;
         else
             movementDirection = 2;

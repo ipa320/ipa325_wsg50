@@ -136,7 +136,7 @@ int main(int argc, char **argv)
     //
     ROS_INFO("Actionserver started, send homing");
     ipa325_wsg50::WSG50HomingGoal goal;
-    goal.direction = 0;
+    goal.direction = 1; // 1 = positive movement direction; 0=negative movement direction
     homingclient.sendGoal(goal);
 
     // wait for feedback and result

@@ -1,0 +1,4 @@
+# tare force sensors (no parameters required)
+---
+# response status code
+int32 status_code

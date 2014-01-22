@@ -19,8 +19,13 @@
 #include <ipa325_wsg50/WSG50GraspPartAction.h>
 #include <ipa325_wsg50/WSG50ReleasePartAction.h>
 
-// include services
+// Services
 //
+#include <ipa325_wsg50/setAcceleration.h>
+#include <ipa325_wsg50/setForceLimit.h>
+#include <ipa325_wsg50/setSoftLimits.h>
+#include <ipa325_wsg50/clearSoftLimits.h>
+#include <ipa325_wsg50/tareForceSensor.h>
 
 
 // contents
@@ -154,6 +159,25 @@ int main(int argc, char **argv)
         return 1;
     }
 #endif
+
+#if 1
+    // test set acceleration
+    //
+    ros::ServiceClient accClient = node.serviceClient<ipa325_wsg50::setAcceleration>("SetAcceleration");
+    ipa325_wsg50::setAcceleration accMsg;
+    accMsg.request.acceleration = 700;
+    if(accClient.call(accMsg))
+    {
+        ROS_INFO("set service returned successfull");
+    }
+    else
+    {
+        ROS_ERROR("could not call service SetAcceleration");
+        return 1;
+    }
+
+#endif
+
 
 #if 1
     // test preposition fingers

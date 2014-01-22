@@ -448,12 +448,11 @@ void WSG50Controller::updateHandler(void)
         break;
     case 0x30:  // _SETACC (Set Acceleration)
         if(resp.status_code == E_SUCCESS) {
-            ROS_INFO("Acceleration set.");
-            _ready = true;
+            if(DEBUG) ROS_INFO("Acceleration set.");
         } else {
             _wsgComm->printErrorCode(resp.status_code);
-            _ready = true;
         }
+        _ready = true;
         // other status code: E_CMD_FORMAT_ERROR
         break;
     case 0x31:  // Get Acceleration
@@ -462,37 +461,35 @@ void WSG50Controller::updateHandler(void)
 //            float test = 0.0;
 //            memcpy(&test, resp.data, sizeof(float));
 //            printf("Acceleration Value: %f\n\n", test);
-            _ready = true;
         } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("GET ACCELERATION response: No Parameter Expected!");
-            _ready = true;
         }
+        _ready = true;
         break;
     case 0x32:  // _SETFORCELIMIT
         if(resp.status_code == E_SUCCESS) {
             ROS_INFO("ForceLimit set.");
-            _ready = true;
         } else {
             _wsgComm->printErrorCode(resp.status_code);
-            _ready = true;
         }
+        _ready = true;
         break;
     case 0x33:  // Get Force Limit
         if(resp.status_code == E_SUCCESS) {
             memcpy(&_forceLimit, resp.data, sizeof(float)); // copy response into float variable
-            _ready = true;
         } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("GET FORCE LIMIT response: No Parameter Expected!");
-            _ready = true;
         }
+        _ready = true;
         break;
     case 0x34:  // _SETSOFTLIMITS
         if(resp.status_code == E_SUCCESS) {
             ROS_INFO("Soft Limits have been set.");
-            _ready = true;
+            _softLimitsSet = true;
         } else {
             _wsgComm->printErrorCode(resp.status_code);
         }
+        _ready = true;
         break;
     case 0x35:  // Get Soft Limits
         if(resp.status_code == E_SUCCESS) {
@@ -506,15 +503,18 @@ void WSG50Controller::updateHandler(void)
                 tmp[i] = resp.data[j];
             }
             memcpy(&_softLimitPlus, tmp, sizeof(float));
-            _ready = true;
         } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("GET SOFT LIMITS response: No Parameter Expected!");
-            _ready = true;
+        } else {
+            ROS_ERROR("GET SOF LIMITS response: Received unexpected error");
+            _wsgComm->printErrorCode(resp.status_code);
         }
+        _ready = true;
         break;
     case 0x36:  // Clear Soft Limits
         if(resp.status_code == E_SUCCESS) {
             ROS_INFO("soft limits cleared successfully.");
+            _softLimitsSet = false;
             _ready = true;
         } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("CLEAR SOFT LIMITS response: No Parameter Expected!");
@@ -2031,4 +2031,10 @@ void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
 
     // unlock
     _msgMutex.unlock();
+}
+
+
+bool WSG50Controller::areSoftLimitsSet()
+{
+    return _softLimitsSet;
 }

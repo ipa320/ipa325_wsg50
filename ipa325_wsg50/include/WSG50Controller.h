@@ -141,6 +141,7 @@ public:
     void    setSoftLimits(float minusLimit,     // set the soft-limits
                           float plusLimit);     // minus: negative motion direction; plus: positive motion direction
     void    clearSoftLimits(void);      // clear all prior set soft limits
+    bool    areSoftLimitsSet(void);
     void    tareForceSensor(void);      // zeroes the connected force sensor
 
 
@@ -258,7 +259,8 @@ private:
                 _widthAutoUpdate,
                 _speedAutoUpdate,
                 _forceAutoUpdate,
-                _graspingStateAutoUpdates;
+                _graspingStateAutoUpdates,
+                _softLimitsSet;
     unsigned char * _LoopTestData;
     unsigned char * _dat;
     int         _LoopTestDataLength;

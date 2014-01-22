@@ -24,6 +24,11 @@
 
 // Services
 //
+#include <ipa325_wsg50/setAcceleration.h>
+#include <ipa325_wsg50/setForceLimit.h>
+#include <ipa325_wsg50/setSoftLimits.h>
+#include <ipa325_wsg50/clearSoftLimits.h>
+#include <ipa325_wsg50/tareForceSensor.h>
 
 // Programm Control
 //
@@ -378,6 +383,8 @@ public:
  */
 void publishStates()
 {
+    float softLimits[2];
+
     // get instance of the node handle
     //
     ros::NodeHandle node;
@@ -418,15 +425,30 @@ void publishStates()
             break;
         }
 
-        // TODO
+        // get soft limits
+        //
+        ROS_INFO("get soft limits");
+        if(_controller->areSoftLimitsSet()) {
+            _controller->getSoftLimits(softLimits);
+        } else {
+            softLimits[0] = 10000;
+            softLimits[1] = 10000;
+        }
+        ROS_INFO("Soft Limits = %f; %f", softLimits[0], softLimits[1]);
 
         // fill message
         //
         systStateMsg.width = _controller->getWidth();
         systStateMsg.speed = _controller->getSpeed();
         systStateMsg.force = _controller->getForce();
+        systStateMsg.acceleration = _controller->getAcceleration();
+        systStateMsg.softlimit_minus = softLimits[0];
+        systStateMsg.softlimit_plus = softLimits[1];
+        systStateMsg.softlimitsset = _controller->areSoftLimitsSet();
         systStateMsg.grasp_state = _controller->getGraspingState();
-        // publish
+
+        // publish message
+        //
         statePublisher.publish(systStateMsg);
 
         // spin once (for incomming messages)
@@ -444,6 +466,26 @@ void publishStates()
         ROS_WARN("Shutting down publisher without SIGINT!");
     }
 }
+
+// ************************************************************************
+// ros service:
+// this will set the acceleration of the schunk gripper
+// there is no response code, since the values are published in the system states message
+//
+bool setAcceleration(ipa325_wsg50::setAcceleration::Request &req,
+                    ipa325_wsg50::setAcceleration::Response &res) {
+
+    ROS_INFO("Set acceleration = %f", req.acceleration);
+
+    // set acceleration
+    //
+    _controller->setAcceleration(req.acceleration);
+
+    // return
+    return true;
+}
+
+
 
 /**
  *  Main method
@@ -485,10 +527,9 @@ int main(int argc, char** argv)
     ROS_INFO("call publishStates() method");
     boost::thread t(publishStates);
 
-    // wait XX miliseconds, so the publishing-cycle can get active
+    // wait XX miliseconds, so the publishing-cycle can become active
     boost::this_thread::sleep(boost::posix_time::millisec(500));
 
-    // TODO:
     // Subscribe to actions
     //
     ROS_INFO("subscribe to action-servers");
@@ -496,6 +537,16 @@ int main(int argc, char** argv)
     WSG50PrePositionFingersActionServer prepFingers("WSG50Gripper_PrePositionFingers");
     WSG50GraspPartActionServer gpserver("WSG50Gripper_GraspPartAction");
     WSG50ReleasePartActionServer rpserver("WSG50Gripper_ReleasePartAction");
+
+
+    // subscribe to services
+    //
+    ROS_INFO("subscribe to services");
+    ros::ServiceServer acc  = node.advertiseService("SetAcceleration", setAcceleration);
+
+    // make ros spin
+    //
+//    ros::spin();
 
     // disconnect
     //

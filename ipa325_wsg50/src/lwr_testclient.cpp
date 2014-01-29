@@ -175,11 +175,54 @@ int main(int argc, char **argv)
         ROS_ERROR("could not call service SetAcceleration");
         return 1;
     }
-
 #endif
 
+#if 1
+    // test setting soft limits
+    //
+    ros::ServiceClient softLClient = node.serviceClient<ipa325_wsg50::setSoftLimits>("SetSoftLimits");
+    ipa325_wsg50::setSoftLimits slMsg;
+    slMsg.request.limit_minus = 10.0;
+    slMsg.request.limit_plus = 55.0;
+    if(softLClient.call(slMsg)) {
+        ROS_INFO("Set soft limits service has returned successfull.");
+    } else {
+        ROS_ERROR("could not call service setSoftLimits");
+        return 1;
+    }
+#endif
+
+#if 0
+    // test clear soft limits
+    //
+    ROS_INFO("Wait for x seconds");
+    boost::this_thread::sleep(boost::posix_time::millisec(2000));
+    ros::ServiceClient clearSoftLimitsClient = node.serviceClient<ipa325_wsg50::clearSoftLimits>("ClearSoftLimits");
+    ipa325_wsg50::clearSoftLimits cslMsg;
+    if(clearSoftLimitsClient.call(cslMsg))
+        ROS_INFO("Clear soft limits service has returned successfull");
+    else {
+        ROS_ERROR("could not call service ClearSoftLimits");
+        return 1;
+    }
+#endif
 
 #if 1
+    // test set force limit
+    //
+    ROS_INFO("set soft limit");
+    ros::ServiceClient setForceLimitClient = node.serviceClient<ipa325_wsg50::setForceLimit>("SetForceLimit");
+    ipa325_wsg50::setForceLimit flMsg;
+    flMsg.request.force = 40.25;
+    if(setForceLimitClient.call(flMsg))
+        ROS_INFO("Set force limits service has returned successfull");
+    else {
+        ROS_ERROR("could not call set force limit service");
+        return 1;
+    }
+#endif
+
+#if 0
     // test preposition fingers
     //
     ROS_INFO("Wait for x seconds");
@@ -207,7 +250,7 @@ int main(int argc, char **argv)
 
 #endif
 
-#if 1
+#if 0
     // test grasp part
     //
     boost::this_thread::sleep(boost::posix_time::millisec(500));
@@ -231,7 +274,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-#if 1
+#if 0
     // test release part
     //
     boost::this_thread::sleep(boost::posix_time::millisec(500));

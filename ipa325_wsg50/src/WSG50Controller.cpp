@@ -243,6 +243,8 @@ void WSG50Controller::setupConnection()
     this->_MinAcceleration = MINACCELERATION;
     this->_MaxForceLimit = MAXFORCELIMIT;
     this->_MinForceLimit = MINFORCELIMIT;
+    this->_softLimitMinus = MINWIDTH;
+    this->_softLimitPlus = MAXWIDTH;
 
     // set default values
     //
@@ -466,7 +468,7 @@ void WSG50Controller::updateHandler(void)
         }
         _ready = true;
         break;
-    case 0x32:  // _SETFORCELIMIT
+    case 0x32:  // Set Force Limit
         if(resp.status_code == E_SUCCESS) {
             ROS_INFO("ForceLimit set.");
         } else {
@@ -482,12 +484,13 @@ void WSG50Controller::updateHandler(void)
         }
         _ready = true;
         break;
-    case 0x34:  // _SETSOFTLIMITS
+    case 0x34:  // Set Soft Limits
         if(resp.status_code == E_SUCCESS) {
             ROS_INFO("Soft Limits have been set.");
             _softLimitsSet = true;
         } else {
             _wsgComm->printErrorCode(resp.status_code);
+            _softLimitsSet = false;
         }
         _ready = true;
         break;
@@ -503,11 +506,20 @@ void WSG50Controller::updateHandler(void)
                 tmp[i] = resp.data[j];
             }
             memcpy(&_softLimitPlus, tmp, sizeof(float));
+            // declare soft limits as set
+            //
+            this->_softLimitsSet = true;
         } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("GET SOFT LIMITS response: No Parameter Expected!");
+            // declare that no soft limits are set
+            //
+            this->_softLimitsSet = false;
         } else {
             ROS_ERROR("GET SOF LIMITS response: Received unexpected error");
             _wsgComm->printErrorCode(resp.status_code);
+            // declare that no soft limits are set
+            //
+            this->_softLimitsSet = false;
         }
         _ready = true;
         break;
@@ -515,13 +527,15 @@ void WSG50Controller::updateHandler(void)
         if(resp.status_code == E_SUCCESS) {
             ROS_INFO("soft limits cleared successfully.");
             _softLimitsSet = false;
-            _ready = true;
+            _softLimitMinus = MINWIDTH;
+            _softLimitPlus = MAXWIDTH;
         } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("CLEAR SOFT LIMITS response: No Parameter Expected!");
-            _ready = true;
         } else {
+            ROS_ERROR("CLEAR SOFT LIMITS response: unexpected error:");
             _wsgComm->printErrorCode(resp.status_code);
         }
+        _ready = true;
         break;
     case 0x38:  // Tare Force Sensor
         if(resp.status_code == E_SUCCESS) {
@@ -541,6 +555,7 @@ void WSG50Controller::updateHandler(void)
             _wsgComm->printErrorCode(resp.status_code);
             _systStatesReadyForCommand = true;
         }
+        _ready = true;
         break;
     case 0x40:  // Get System State
         if(resp.status_code == E_SUCCESS) {
@@ -1312,6 +1327,11 @@ void WSG50Controller::setSoftLimits(float minusLimit, float plusLimit)
     //
     _ready = false;
 
+    // write in cache
+    //
+    _softLimitMinus = minusLimit;
+    _softLimitPlus = plusLimit;
+
     // check if limits are in range
     //
     if(minusLimit < _MinWidth) minusLimit = _MinWidth;
@@ -1443,7 +1463,7 @@ float WSG50Controller::getMaxAcceleration() { return this->_MaxAcceleration; }
 float WSG50Controller::getMinAcceleration() { return this->_MinAcceleration; }
 float WSG50Controller::getMaxForceLimit() { return this->_MaxForceLimit; }
 float WSG50Controller::getMinForceLimit() { return this->_MinForceLimit; }
-
+bool  WSG50Controller::areSoftLimitsSet() { return this->_softLimitsSet; }
 
 
 float WSG50Controller::getWidth(void)
@@ -1755,43 +1775,57 @@ void WSG50Controller::getSpeedUpdates(bool updateOnChangeOnly,
 //
 void WSG50Controller::getSoftLimits(float *softLimits)
 {
-    // check if ready
+    // check if soft-limits are already set
     //
-    if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
-        return;
+    if(!_softLimitsSet) {
+
+        // ***************************************************
+        // if no soft limits are defined, request from gripper
+        //
+
+        // check if gripper/controller is ready
+        //
+        if(!_ready) {
+            if(DEBUG) ROS_ERROR("getSoftLimits(): Gripper is not ready to receive another command!");
+            return;
+        }
+
+        // prevent from sending other messages
+        //
+        _ready = false;
+
+        // lock msg access
+        //
+        _msgMutex.lock();
+
+        // Create Message
+        //
+        _msg.id = _GETSOFTLIMIT;  // Get Acceleration
+        _msg.length = 0;
+        _msg.data = 0;
+
+        // Send Message
+        //
+        this->_wsgComm->pushMessage(&_msg);
+
+        // unlock
+        _msgMutex.unlock();
+
+        // Loop Wait for Response
+        //
+        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
     }
-    // prevent from sending other messages
-    //
-    _ready = false;
 
-    // lock msg access
+    // ****************************************************
+    // Return soft limits from cache
     //
-    _msgMutex.lock();
-
-    // Create Message
-    //
-    _msg.id = _GETSOFTLIMIT;  // Get Acceleration
-    _msg.length = 0;
-    _msg.data = 0;
-
-    // Send Message
-    //
-    this->_wsgComm->pushMessage(&_msg);
-
-    // unlock
-    _msgMutex.unlock();
-
-    // Loop Wait for Response
-    //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
 
     // set values
     //
     softLimits[0] = _softLimitMinus;
     softLimits[1] = _softLimitPlus;
 
-    // return Acceleration
+    // return soft limits
     //
     return;
 }
@@ -2031,10 +2065,4 @@ void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
 
     // unlock
     _msgMutex.unlock();
-}
-
-
-bool WSG50Controller::areSoftLimitsSet()
-{
-    return _softLimitsSet;
 }

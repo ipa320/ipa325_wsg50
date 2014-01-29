@@ -93,8 +93,6 @@ protected:
     unsigned int goal_;
 
 public:
-
-
     // Constructor
     WSG50HomingAction(std::string name) :
         homingserver_(nh_, name, false),
@@ -427,14 +425,12 @@ void publishStates()
 
         // get soft limits
         //
-        ROS_INFO("get soft limits");
         if(_controller->areSoftLimitsSet()) {
             _controller->getSoftLimits(softLimits);
         } else {
-            softLimits[0] = 10000;
-            softLimits[1] = 10000;
+            softLimits[0] = 0;      // default values over the whole range
+            softLimits[1] = 1000;   // default values over the whole range
         }
-        ROS_INFO("Soft Limits = %f; %f", softLimits[0], softLimits[1]);
 
         // fill message
         //
@@ -472,9 +468,9 @@ void publishStates()
 // this will set the acceleration of the schunk gripper
 // there is no response code, since the values are published in the system states message
 //
-bool setAcceleration(ipa325_wsg50::setAcceleration::Request &req,
-                    ipa325_wsg50::setAcceleration::Response &res) {
-
+bool setAccelerationService(ipa325_wsg50::setAcceleration::Request &req,
+                    ipa325_wsg50::setAcceleration::Response &res)
+{
     ROS_INFO("Set acceleration = %f", req.acceleration);
 
     // set acceleration
@@ -485,6 +481,52 @@ bool setAcceleration(ipa325_wsg50::setAcceleration::Request &req,
     return true;
 }
 
+// ************************************************************************
+// ros service: SetSoftLimits
+// this will set the minus and plus soft-limits of the schunk gripper
+// there is no response code, since the values are published in the system states message
+//
+bool setSoftLimitsService(ipa325_wsg50::setSoftLimits::Request &req,
+                          ipa325_wsg50::setSoftLimits::Response &resp)
+{
+    ROS_INFO("Set soft limits: minus = %f; plus = %f", req.limit_minus, req.limit_plus);
+
+    // set soft limits
+    //
+    _controller->setSoftLimits((float) req.limit_minus, (float) req.limit_plus);
+
+    // return
+    return true;
+}
+
+// ************************************************************************
+// ros service: Clear Soft Limits
+// this will set the minus and plus soft-limits of the schunk gripper
+// there is no response code, since the values are published in the system states message
+//
+bool clearSoftLimitsService(ipa325_wsg50::clearSoftLimits::Request &req,
+                            ipa325_wsg50::clearSoftLimits::Response &resp)
+{
+    ROS_INFO("Clear Soft Limits service called");
+
+    // clear soft limits
+    //
+    _controller->clearSoftLimits();
+
+    return true;
+}
+
+
+bool setForceLimitService(ipa325_wsg50::setForceLimit::Request &req,
+                          ipa325_wsg50::setForceLimit::Response &resp)
+{
+    ROS_INFO("Set Force Limits service called; ForceLimit = %f", req.force);
+
+    // set force limits
+    //
+    _controller->setForceLimit(req.force);
+    return true;
+}
 
 
 /**
@@ -542,7 +584,10 @@ int main(int argc, char** argv)
     // subscribe to services
     //
     ROS_INFO("subscribe to services");
-    ros::ServiceServer acc  = node.advertiseService("SetAcceleration", setAcceleration);
+    ros::ServiceServer acc  = node.advertiseService("SetAcceleration", setAccelerationService);
+    ros::ServiceServer sls  = node.advertiseService("SetSoftLimits", setSoftLimitsService);
+    ros::ServiceServer csl  = node.advertiseService("ClearSoftLimits", clearSoftLimitsService);
+    ros::ServiceServer sfl  = node.advertiseService("SetForceLimit", setForceLimitService);
 
     // make ros spin
     //

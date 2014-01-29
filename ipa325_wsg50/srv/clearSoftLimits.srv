@@ -1,4 +1,3 @@
 # clear soft limits (no parameters required)
 ---
-# response status code
-int32 status_code
+# response no response since included in system-state-message

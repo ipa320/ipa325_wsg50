@@ -54,6 +54,18 @@
 #define MINACCELERATION 100.0
 #endif
 
+#ifndef DEFAULTACCELERATION
+#define DEFAULTACCELERATION 500.0
+#endif
+
+#ifndef DEFAULTSPEED
+#define DEFAULTSPEED 50.0
+#endif
+
+#ifndef DEFAULTFORCELIMIT
+#define DEFAULTFORCELIMIT 10.0
+#endif
+
 
 // define local variables
 bool wsg_active;
@@ -224,35 +236,36 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
     }
 }
 
-
+/*
+ *  establish connection to the to the gripper and set default values
+ */
 void WSG50Controller::setupConnection()
 {
+    // ****************************************
     // initialize startup values
     //
     _checkingCommunication = false;
     _communicationOK = false;
 
-
-    // initialize max and min values
+    // ****************************************
+    // initialize max, min and default values
     //
-    this->_MaxWidth = MAXWIDTH;
-    this->_MinWidth = MINWIDTH;
-    this->_MaxSpeed = MAXSPEED;
-    this->_MinSpeed = MINSPEED;
-    this->_MaxAcceleration = MAXACCELERATION;
-    this->_MinAcceleration = MINACCELERATION;
-    this->_MaxForceLimit = MAXFORCELIMIT;
-    this->_MinForceLimit = MINFORCELIMIT;
-    this->_softLimitMinus = MINWIDTH;
-    this->_softLimitPlus = MAXWIDTH;
+    this->_MaxWidth         = MAXWIDTH;
+    this->_MinWidth         = MINWIDTH;
+    this->_MaxSpeed         = MAXSPEED;
+    this->_MinSpeed         = MINSPEED;
+    this->_MaxAcceleration  = MAXACCELERATION;
+    this->_MinAcceleration  = MINACCELERATION;
+    this->_MaxForceLimit    = MAXFORCELIMIT;
+    this->_MinForceLimit    = MINFORCELIMIT;
+    this->_softLimitMinus   = MINWIDTH;
+    this->_softLimitPlus    = MAXWIDTH;
+    this->_acceleration     = DEFAULTACCELERATION;      // mm/s²
+    this->_speed            = DEFAULTSPEED;             // mm/s
+    this->_forceLimit       = DEFAULTFORCELIMIT;        // N
+    this->_currentForceLimit = DEFAULTFORCELIMIT;       // N
 
-    // set default values
-    //
-    this->_acceleration = 500.0;    // mm/s²
-    this->_speed        = 50.0;     // mm/s
-    this->_forceLimit   = 10.0;     // N
-
-
+    // ****************************************
     // get instance of the communication layer
     //
     this->_wsgComm = new WSG50Communicator(this->_IP, this->_PORT);
@@ -262,7 +275,7 @@ void WSG50Controller::setupConnection()
     //
     this->_wsgComm->Attach(this);
 
-
+    // ****************************************
     // start connection
     //
     this->_wsgComm->startConnection();
@@ -281,6 +294,7 @@ void WSG50Controller::setupConnection()
         ROS_ERROR("Connection Failure! Please try reconnecting.\n");
     }
 
+    // ****************************************
     // gripper is ready to receive commands
     //
     this->_ready = true;
@@ -973,7 +987,7 @@ void WSG50Controller::prePositionFingers(bool stopOnBlock, float width, float sp
     // check if ready
     //
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("prePositionFingers(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -989,9 +1003,7 @@ void WSG50Controller::prePositionFingers(bool stopOnBlock, float width, float sp
     // Bit 0: Movement type
     //          1 = relative motion -> passed width is treated as offset to current opening width
     //          0 = absolute motion -> absolute width values
-
     // Bit 1: Stop on block, true, false
-
     // Bit 2-7 unused, have to be 0
     //
     if(stopOnBlock) {
@@ -1010,9 +1022,6 @@ void WSG50Controller::prePositionFingers(bool stopOnBlock, float width, float sp
         data[pos] = (unsigned char) tmp[i];
         pos++;
     }
-
-//    printf("width: ");
-//    _wsgComm->printHexArray(tmp, 4);
 
     // set tmp to 0
     //
@@ -1069,7 +1078,7 @@ void WSG50Controller::grasp(float width, float speed)
     // check if ready
     //
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("grasp(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -1124,7 +1133,7 @@ void WSG50Controller::release(float openWidth, float speed)
     // check if ready
     //
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("release(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -1139,7 +1148,8 @@ void WSG50Controller::release(float openWidth, float speed)
             || graspingState == 3)  // part lost
     {
         stateOK = true;
-    } else
+    }
+    else
     {
         stateOK = false;
         ROS_ERROR("Wrong grasping state, can't release part! \nCurrent grasping state is: %d", graspingState);
@@ -1202,7 +1212,7 @@ void WSG50Controller::setAcceleration(float acceleration)
     // check if ready
     //
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("setAcceleration(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -1258,7 +1268,7 @@ void WSG50Controller::setForceLimit(float forcelimit)
     // check if ready
     //
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("setForceLimit(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -1300,6 +1310,10 @@ void WSG50Controller::setForceLimit(float forcelimit)
     //
     this->_wsgComm->pushMessage(&_msg);
 
+    // set force limit to cache
+    //
+    this->_currentForceLimit = forcelimit;
+
     // unlock
     _msgMutex.unlock();
 }
@@ -1320,7 +1334,7 @@ void WSG50Controller::setSoftLimits(float minusLimit, float plusLimit)
 
     // check if ready
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("setSoftLimits(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -1378,7 +1392,7 @@ void WSG50Controller::clearSoftLimits()
     // check if ready
     //
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("clearSoftLimits(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -1415,7 +1429,7 @@ void WSG50Controller::tareForceSensor()
     // check if ready
     //
     if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
+        ROS_ERROR("tareForceSensor(): Gripper is not ready to receive another command!");
         return;
     }
     // prevent from sending other messages
@@ -1783,16 +1797,8 @@ void WSG50Controller::getSoftLimits(float *softLimits)
         // if no soft limits are defined, request from gripper
         //
 
-        // check if gripper/controller is ready
+        // don't need to check for readyness, since this message can be sent anytime
         //
-        if(!_ready) {
-            if(DEBUG) ROS_ERROR("getSoftLimits(): Gripper is not ready to receive another command!");
-            return;
-        }
-
-        // prevent from sending other messages
-        //
-        _ready = false;
 
         // lock msg access
         //
@@ -1831,19 +1837,19 @@ void WSG50Controller::getSoftLimits(float *softLimits)
 }
 
 
+// return last set force limit, without sending a message to the gripper
+//
+float WSG50Controller::getForceLimitFromCache()
+{
+    return _forceLimit;
+}
+
 // not asynchroneous
 //
 float WSG50Controller::getForceLimit()
 {
-    // check if ready
+    // don't need to check for readyness, since this message can be sent anytime
     //
-    if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
-        return _forceLimit;
-    }
-    // prevent from sending other messages
-    //
-    _ready = false;
 
     // lock msg access
     //
@@ -1871,20 +1877,20 @@ float WSG50Controller::getForceLimit()
     return _forceLimit;
 }
 
+// return last set acceleration
+// while avoiding another message to the gripper
+// this may not be as accurate as other messages
+//
+float WSG50Controller::getAccelerationFromCache()
+{
+    return _acceleration;
+}
 
 // not asynchron.
 float WSG50Controller::getAcceleration()
 {
-    // check if ready
+    // don't need to check for readyness, since this message can be sent anytime
     //
-    if(!_ready) {
-        ROS_ERROR("Gripper is not ready to receive another command!");
-        return _acceleration;
-    }
-    // prevent from sending other messages
-    //
-    _ready = false;
-
 
     // lock msg access
     //

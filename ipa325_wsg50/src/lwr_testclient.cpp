@@ -26,7 +26,9 @@
 #include <ipa325_wsg50/setSoftLimits.h>
 #include <ipa325_wsg50/clearSoftLimits.h>
 #include <ipa325_wsg50/tareForceSensor.h>
-
+#include <ipa325_wsg50/stop.h>
+#include <ipa325_wsg50/fastStop.h>
+#include <ipa325_wsg50/ackFastStop.h>
 
 // contents
 //
@@ -177,7 +179,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-#if 1
+#if 0
     // test setting soft limits
     //
     ros::ServiceClient softLClient = node.serviceClient<ipa325_wsg50::setSoftLimits>("SetSoftLimits");
@@ -192,7 +194,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-#if 0
+#if 1
     // test clear soft limits
     //
     ROS_INFO("Wait for x seconds");
@@ -248,6 +250,108 @@ int main(int argc, char **argv)
     action_active = true;
     while(action_active && g_active) {ros::spinOnce();}
 
+#endif
+
+    int count = 0;
+
+#if 1
+    // test preposition fingers and interrupt with stop
+    //
+    ROS_INFO("Wait for x seconds");
+    boost::this_thread::sleep(boost::posix_time::millisec(2000));
+    ROS_INFO("Testclient: test preposition fingers and stop");
+
+    // connect to action server
+    actionlib::SimpleActionClient<ipa325_wsg50::WSG50PrePositionFingersAction>
+            prepositionclient_("WSG50Gripper_PrePositionFingers", true);
+    if(!prepositionclient_.waitForServer(ros::Duration(20.0))) {
+        ROS_ERROR("Run into timeout while waiting for the preposition action server.");
+        return 1;
+    }
+
+    // send action goal
+    ipa325_wsg50::WSG50PrePositionFingersGoal goal2;
+    goal2.stopOnBlock = true;
+    goal2.width = 55.0;
+    goal2.speed = 20.0;
+    prepositionclient_.sendGoal(goal2, &prepFingersDoneCB, &prepFingersActiveCB, &prepFingersFeedbackCB);
+
+    count = 0;
+    // wait until action has completed
+    action_active = true;
+    while(action_active && g_active) {
+        ros::spinOnce();
+
+        // send stop message
+        boost::this_thread::sleep(boost::posix_time::millisec(1));
+        if(count == 1000) { // wait 1 sec
+            // send stop message
+            boost::this_thread::sleep(boost::posix_time::millisec(100));
+            ros::ServiceClient stopClient = node.serviceClient<ipa325_wsg50::stop>("Stop");
+            ipa325_wsg50::stop stopMsg;
+            ROS_INFO("send stop message");
+            if(stopClient.call(stopMsg))
+                ROS_INFO("Stop called successfully");
+            else {
+                ROS_WARN("could not call stop service!");
+                return 1;
+            }
+        }
+        count++;
+    }
+
+
+    // test preposition fingers and interrupt with faststop
+    //
+    ROS_INFO("Wait for x seconds");
+    boost::this_thread::sleep(boost::posix_time::millisec(1000));
+    ROS_INFO("Testclient: test preposition fingers and stop");
+
+    // send action goal
+    ipa325_wsg50::WSG50PrePositionFingersGoal goal3;
+    goal3.stopOnBlock = true;
+    goal3.width = 35.0;
+    goal3.speed = 20.0;
+    prepositionclient_.sendGoal(goal3, &prepFingersDoneCB, &prepFingersActiveCB, &prepFingersFeedbackCB);
+
+    count = 0;
+    // wait until action has completed
+    action_active = true;
+    while(action_active && g_active) {
+        ros::spinOnce();
+
+        // send stop message
+        boost::this_thread::sleep(boost::posix_time::millisec(1));
+        if(count == 1000) { // wait 1 sec
+            // send fast stop message
+            boost::this_thread::sleep(boost::posix_time::millisec(100));
+            ros::ServiceClient fastStopClient = node.serviceClient<ipa325_wsg50::fastStop>("FastStop");
+            ipa325_wsg50::stop fastStopMsg;
+            ROS_INFO("send stop message");
+            if(fastStopClient.call(fastStopMsg))
+                ROS_INFO("FastStop called successfully");
+            else {
+                ROS_WARN("could not call fast stop service!");
+                return 1;
+            }
+        }
+        count++;
+    }
+
+    // ******************************************
+    // acknowledge fast stop
+    //
+    boost::this_thread::sleep(boost::posix_time::millisec(2000)); // wait 2 sec
+
+    ros::ServiceClient ackFastStopClient = node.serviceClient<ipa325_wsg50::ackFastStop>("AcknowledgeFastStop");
+    ipa325_wsg50::ackFastStop ackMsg;
+    ROS_INFO("Acknowledge Fast Stop");
+    if(ackFastStopClient.call(ackMsg))
+        ROS_INFO("acknowledgeFastStop successfully called!");
+    else {
+        ROS_ERROR("could not call AcknowledgeFastStop-service");
+        return 1;
+    }
 #endif
 
 #if 0

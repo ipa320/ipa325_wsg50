@@ -169,7 +169,9 @@ public:
     int     getTemperature(void);
 
     float   getAcceleration(void);
+    float   getAccelerationFromCache(void);
     float   getForceLimit(void);
+    float   getForceLimitFromCache(void);
     void    getSoftLimits(float * softLimits); // expects a float array with at least the size of 2
     void    loop();
     bool    isCommunicationOk(void);
@@ -242,6 +244,7 @@ private:
                 _currentOpeningWidth,
                 _currentSpeed,
                 _currentForce,
+                _currentForceLimit,
                 _currentTemperature;
 
     TMESSAGE    _msg;

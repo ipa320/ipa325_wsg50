@@ -29,6 +29,9 @@
 #include <ipa325_wsg50/setSoftLimits.h>
 #include <ipa325_wsg50/clearSoftLimits.h>
 #include <ipa325_wsg50/tareForceSensor.h>
+#include <ipa325_wsg50/stop.h>
+#include <ipa325_wsg50/fastStop.h>
+#include <ipa325_wsg50/ackFastStop.h>
 
 // Programm Control
 //
@@ -437,6 +440,7 @@ void publishStates()
         systStateMsg.width = _controller->getWidth();
         systStateMsg.speed = _controller->getSpeed();
         systStateMsg.force = _controller->getForce();
+        systStateMsg.forcelimit = _controller->getForceLimitFromCache();
         systStateMsg.acceleration = _controller->getAcceleration();
         systStateMsg.softlimit_minus = softLimits[0];
         systStateMsg.softlimit_plus = softLimits[1];
@@ -516,7 +520,11 @@ bool clearSoftLimitsService(ipa325_wsg50::clearSoftLimits::Request &req,
     return true;
 }
 
-
+// ************************************************************************
+// ros service: set force limit (newton)
+// this will set the force limit of the schunk gripper
+// there is no response code, since the values are published in the system states message
+//
 bool setForceLimitService(ipa325_wsg50::setForceLimit::Request &req,
                           ipa325_wsg50::setForceLimit::Response &resp)
 {
@@ -525,6 +533,53 @@ bool setForceLimitService(ipa325_wsg50::setForceLimit::Request &req,
     // set force limits
     //
     _controller->setForceLimit(req.force);
+    return true;
+}
+
+// ************************************************************************
+// ros service: stop
+// this will stop gripper movements
+//
+bool stopService(ipa325_wsg50::stop::Request &req,
+                 ipa325_wsg50::stop::Response &resp)
+{
+    ROS_INFO("STOP service called");
+
+    // set force limits
+    //
+    _controller->stop();
+    return true;
+}
+
+// ************************************************************************
+// ros service: fast stop
+// this will stop gripper movements immediately
+// in this state the gripper will not accept any other movement orders until
+// "acknowledgeFastStop" is called!
+//
+bool fastStopService(ipa325_wsg50::stop::Request &req,
+                 ipa325_wsg50::stop::Response &resp)
+{
+    ROS_INFO("FASTSTOP service called");
+
+    // set force limits
+    //
+    _controller->fastStop();
+    return true;
+}
+
+// ************************************************************************
+// ros service: acknowledge fast stop
+// return gripper into idle state where new commands can be sent.
+//
+bool acknowledgeFastStopService(ipa325_wsg50::stop::Request &req,
+                 ipa325_wsg50::stop::Response &resp)
+{
+    ROS_INFO("Acknowledge fast stop service called");
+
+    // acknowledge fast stop
+    //
+    _controller->ackFastStop();
     return true;
 }
 
@@ -588,6 +643,9 @@ int main(int argc, char** argv)
     ros::ServiceServer sls  = node.advertiseService("SetSoftLimits", setSoftLimitsService);
     ros::ServiceServer csl  = node.advertiseService("ClearSoftLimits", clearSoftLimitsService);
     ros::ServiceServer sfl  = node.advertiseService("SetForceLimit", setForceLimitService);
+    ros::ServiceServer s    = node.advertiseService("Stop", stopService);
+    ros::ServiceServer fs   = node.advertiseService("FastStop", fastStopService);
+    ros::ServiceServer afs  = node.advertiseService("AcknowledgeFastStop", acknowledgeFastStopService);
 
     // make ros spin
     //

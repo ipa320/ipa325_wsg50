@@ -68,6 +68,9 @@ add_service_files(
     setForceLimit.srv
     setSoftLimits.srv
     tareForceSensor.srv
+    stop.srv
+    fastStop.srv
+    ackFastStop.srv
 )
 
 ## Generate added messages and services with any dependencies listed here

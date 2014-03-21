@@ -32,7 +32,7 @@ find_package(Boost
 ## See http://ros.org/doc/groovy/api/catkin/html/user_guide/setup_dot_py.html
 # catkin_python_setup()
 
-SET(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 
 
 #######################################
@@ -93,7 +93,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+#  INCLUDE_DIRS include
 #  LIBRARIES kuka_lwr
   CATKIN_DEPENDS
     roscpp
@@ -113,8 +113,9 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include
-#  ${catkin_INCLUDE_DIRS} include/3rdParty/fri
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS} #include/3rdParty/fri
 )
 
 ## Specify libraries to link a library or executable target against

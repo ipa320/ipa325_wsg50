@@ -13,7 +13,6 @@ find_package(catkin
     trajectory_msgs
     message_generation
 ##  additional packages
-    industrial_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -79,7 +78,6 @@ generate_messages(
   actionlib_msgs
   trajectory_msgs
   std_msgs
-  industrial_msgs
 )
 
 
@@ -101,7 +99,6 @@ catkin_package(
     trajectory_msgs
     std_msgs
     message_runtime
-    industrial_msgs
 #  DEPENDS system_lib
 )
 

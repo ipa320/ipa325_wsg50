@@ -34,10 +34,11 @@
 #include <queue>
 #include <string>
 
-
-
-
-
+/*!
+ * Manufacturer's default network config
+ */
+#define DEFAULTIP   "192.168.1.20"
+#define DEFAULTPORT "1000"
 
 /*!
  * Commands

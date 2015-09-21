@@ -13,9 +13,6 @@
  */
 #define DEBUG true
 
-#define DEFAULTIP   "192.168.1.20"
-#define DEFAULTPORT "1000"
-
 #define TIMEOUT     1       // sec
 
 /* ############################################################
@@ -286,7 +283,7 @@ void WSG50Controller::setupConnection()
 
     // checking connection state
     //
-    ROS_INFO("check connection...\n");
+    ROS_DEBUG("check connection...\n");
     if(this->isCommunicationOk())
     {
         ROS_INFO("Connection is up and running.\n");

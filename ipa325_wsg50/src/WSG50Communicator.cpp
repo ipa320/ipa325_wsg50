@@ -169,7 +169,7 @@ WSG50Communicator::~WSG50Communicator(void)
  */
 void WSG50Communicator::startConnection(void)
 {
-    ROS_INFO("Starting connection");
+    ROS_DEBUG("Starting connection");
 
     // check if connection is already set
     //

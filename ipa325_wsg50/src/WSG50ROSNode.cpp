@@ -601,8 +601,12 @@ int main(int argc, char** argv)
 
     // Initialize controller
     //
+    std::string ip, port;
+    ros::param::param<std::string>("~ip", ip, DEFAULTIP);
+    ros::param::param<std::string>("~port", port, DEFAULTPORT);
+    ROS_INFO_STREAM("Connecting to " << ip << ":" << port << "...");
     try {
-        _controller = new WSG50Controller();
+        _controller = new WSG50Controller(ip, port);
     } catch (int e) {
         ROS_ERROR("An exception occured while initializing the WSG50Controller!\nError: %d\nAborting further processing", e);
         return 0;

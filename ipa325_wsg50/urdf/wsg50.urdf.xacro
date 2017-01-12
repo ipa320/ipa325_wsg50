@@ -18,7 +18,7 @@
             <visual>
                 <origin xyz="0 0 0" rpy="0 0 0" />
                 <geometry>
-                    <mesh filename="package://ipa325_robot_descriptions/meshes/tools/wsg50/WSG50_110.stl"/>
+                    <mesh filename="package://ipa325_wsg50/meshes/WSG50_110.stl"/>
                 </geometry>
                 <material name="wsg50-greyish">
                     <color rgba="0.8 0.8 0.8 1"/>
@@ -27,7 +27,7 @@
             <collision>
                 <origin xyz="0 0 0" rpy="0 0 0" />
                 <geometry>
-                    <mesh filename="package://ipa325_robot_descriptions/meshes/tools/wsg50/WSG50_110.stl"/>
+                    <mesh filename="package://ipa325_wsg50/meshes/WSG50_110.stl"/>
                 </geometry>
             </collision>
         </link>
@@ -41,5 +41,5 @@
         <link name="${prefix}jaw_base"/>
 
     </xacro:macro>
-    
+
 </robot>

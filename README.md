@@ -7,6 +7,76 @@ This is a ros-driver for the [Schunk WSG50-110 Gripper](https://www.weiss-roboti
 
 Note that there is also an other ROS driver now: http://wiki.ros.org/wsg50
 
+
+## Acknowledgements
+This project is a result of the LIAA project.
+http://www.project-leanautomation.eu/
+
+![LIAA](http://www.project-leanautomation.eu/fileadmin/img/LIAALogo/Logo_LIAA.png "LIAA")
+
+![EC](http://www.project-leanautomation.eu/typo3temp/pics/b3ba71db31.jpg "EC")
+
+LIAA received funding from the European Union’s Seventh Framework Programme for research, technological development and demonstration under grant agreement no. 608604.
+
+Project runtime: 02.09.2013 – 31.08.2017.
+
+## ROS-Node Documentation
+Special Thanks to Mainauthor **Florian Röser**
+
+this section contains the API of the ROS-Node for the WSG50 Driver.
+
+The ROS node for the WSG50 Gripper makes use of:
+* ROS Messages (see http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv)
+* ROS Services (see http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv)
+* ROS actionlib (see http://wiki.ros.org/actionlib_tutorials/Tutorials)
+
+### Actions
+Actions includes all actions provided by the ros-driver for the schunk wsg50 gripper.
+
+* WSG50HomingAction: Provide an homing action.
+* Homing Action: This action has to be run before any other motion command is send.
+ 1. @goal: bool direction
+    - positive direction
+    - negative movement direction
+ 2. @result: int status_code (see possible [Status Codes](#status-codes) for detailed description)
+ 3. @feedback
+    - float width (in mm)
+    - float speed (in mm/s)
+    - float force (in newton)
+
+* WSG50PrePositionFingersAction: Pre-Position fingers with given widht and speed.
+ 1. @goal params: bool stopOnBlock: defines if the pre-position movement should stop if something is in the way
+    - float width (in mm)
+    - float speed (in mm/s)
+ 2. @result: int status_code (see possible [Status Codes](#status-codes) for detailed description)
+ 3. @feedback
+    - float width (in mm)
+    - float speed (in mm/s)
+    - float force (in newton)
+* WSG50GraspPartAction
+* WSG50ReleasePartAction
+
+### ROS Messages
+includes the messages and topics sent by the ROS-Driver
+
+#### System State Message
+
+Advertized as ROS-topic: */system_state*
+
+this message will be published about every 20 milliseconds.
+
+### ROS Services
+includes the services provided by the ROS-Driver
+
+* setAcceleration.srv: This sets the acceleration for the gripper motions, which are the movements of the fingers.
+* setSoftLimits.srv: This service will set the soft limits (minus and plus) for the gripper motions
+* clearSoftLimits.srv: **Note:** Even if the soft limits are cleared, the ros-wrapper will return soft limits in the system-state message, but these soft limits will then be equal to the maximum and minimum width of the finger movements.
+* setForceLimit.srv: The force-limit defines with which maximum force the fingers will try to move, or at which force-threshold the fingers will stop moving.
+* stop.srv: this will stop any motion
+* fastStop.srv: this will stop any motion and put the gripper in a state where it requires the message "Acknowledge Fast Stop" before it can accept any other command!
+* ackFastStop.srv: This will release the fast-stop state so the gripper can accept new commands
+
+
 ### Grasping States
 Please consider the Schunk documentation for the grasping state graph!
 
@@ -78,62 +148,6 @@ These commands include the general system configuration commands.
 | FINGER POWER CONTROL | enables or disables the power supply for the selected finger | -- (todo)
 | GET FINGER DATA | return the current finger data for predefined finger types | -- (todo)
 
-
-## ROS-Node Documentation
-Special Thanks to Mainauthor **Florian Röser**
-
-this section contains the API of the ROS-Node for the WSG50 Driver.
-
-The ROS node for the WSG50 Gripper makes use of:
-* ROS Messages (see http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv)
-* ROS Services (see http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv)
-* ROS actionlib (see http://wiki.ros.org/actionlib_tutorials/Tutorials)
-
-### Actions
-Actions includes all actions provided by the ros-driver for the schunk wsg50 gripper.
-
-* WSG50HomingAction: Provide an homing action.
-* Homing Action: This action has to be run before any other motion command is send.
- 1. @goal: bool direction
-    - positive direction
-    - negative movement direction
- 2. @result: int status_code (see possible [Status Codes](#status-codes) for detailed description)
- 3. @feedback
-    - float width (in mm)
-    - float speed (in mm/s)
-    - float force (in newton)
-
-* WSG50PrePositionFingersAction: Pre-Position fingers with given widht and speed.
- 1. @goal params: bool stopOnBlock: defines if the pre-position movement should stop if something is in the way
-    - float width (in mm)
-    - float speed (in mm/s)
- 2. @result: int status_code (see possible [Status Codes](#status-codes) for detailed description)
- 3. @feedback
-    - float width (in mm)
-    - float speed (in mm/s)
-    - float force (in newton)
-* WSG50GraspPartAction
-* WSG50ReleasePartAction
-
-### ROS Messages
-includes the messages and topics sent by the ROS-Driver
-
-#### System State Message
-
-Advertized as ROS-topic: */system_state*
-
-this message will be published about every 20 milliseconds.
-
-### ROS Services
-includes the services provided by the ROS-Driver
-
-* setAcceleration.srv: This sets the acceleration for the gripper motions, which are the movements of the fingers.
-* setSoftLimits.srv: This service will set the soft limits (minus and plus) for the gripper motions
-* clearSoftLimits.srv: **Note:** Even if the soft limits are cleared, the ros-wrapper will return soft limits in the system-state message, but these soft limits will then be equal to the maximum and minimum width of the finger movements.
-* setForceLimit.srv: The force-limit defines with which maximum force the fingers will try to move, or at which force-threshold the fingers will stop moving.
-* stop.srv: this will stop any motion
-* fastStop.srv: this will stop any motion and put the gripper in a state where it requires the message "Acknowledge Fast Stop" before it can accept any other command!
-* ackFastStop.srv: This will release the fast-stop state so the gripper can accept new commands
 
 ## Status Codes
 

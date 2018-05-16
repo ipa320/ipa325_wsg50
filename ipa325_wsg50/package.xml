@@ -5,13 +5,13 @@
   <description>The schunk wsg50 gripper package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
-  <maintainer email="rfa-fr@ipa.fraunhofer.de">Florian Roeser</maintainer>
+  <maintainer email="lorenz.halt@ipa.fraunhofer.de">Lorenz Halt</maintainer>
 
 
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>TODO</license>
+  <license>MIT</license>
 
 
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
@@ -23,7 +23,7 @@
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
   <!-- Authors do not have to be maintianers, but could be -->
   <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <author email="lth@ipa.fhg.de">Florian Roeser</author>
 
 
   <!-- The *_depend tags are used to specify dependencies -->

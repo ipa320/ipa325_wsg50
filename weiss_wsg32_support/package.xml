@@ -5,8 +5,8 @@
   <description>The weiss/schunk wsg32 gripper support package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
-  <maintainer email="rfa-fr@ipa.fraunhofer.de">Florian Roeser</maintainer>
   <maintainer email="simon.schmeisser@isys-vision.de">Simon Schmeisser</maintainer>
+  <maintainer email="lorenz.halt@ipa.fraunhofer.de">Lorenz Halt</maintainer>
 
 
   <!-- One license tag required, multiple allowed, one license per tag -->

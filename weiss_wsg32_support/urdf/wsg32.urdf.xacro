@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="wsg32">
+
+    <xacro:macro name="wsg32" params="parent prefix *origin">
+
+        <joint name="{prefix}mount" type="fixed" >
+            <xacro:insert_block name="origin" />
+            <parent link="${parent}" />
+            <child link="${prefix}wsg_base_frame" />
+        </joint>
+
+        <link name="${prefix}wsg_base_frame">
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <mass value="0.5"/>
+                <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
+            </inertial>
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://weiss_wsg32_support/meshes/WSG32_body.stl"/>
+                </geometry>
+                <material name="wsg50-greyish">
+                    <color rgba="0.8 0.8 0.8 1"/>
+                </material>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0.031" rpy="0 0 0" />
+                <geometry>
+                    <box size="0.04 0.14 0.065" />
+                </geometry>
+            </collision>
+        </link>
+      
+        <joint name="${prefix}finger_left" type="prismatic">
+                <parent link="${prefix}wsg_base_frame"/>
+                <child link="${prefix}finger_left_frame"/>
+                <origin xyz=" 0 0 0" rpy="0 0 0"/>
+                <axis xyz="0 -1 0"/>
+                <limit effort="0" lower="0" upper="0.05" velocity="0.001"/>
+        </joint>
+        <joint name="${prefix}finger_right" type="prismatic">
+                <parent link="${prefix}wsg_base_frame"/>
+                <child link="${prefix}finger_right_frame"/>
+                <origin xyz=" 0 0 0" rpy="0 0 ${m_pi}"/>
+                <axis xyz="0 -1 0"/>
+                <limit effort="0" lower="0" upper="0.05" velocity="0.001"/>
+                <mimic joint="${prefix}finger_left"/>
+        </joint>
+        
+        <link name="${prefix}finger_left_frame">
+            <visual>
+                <geometry>
+                    <mesh filename="package://weiss_wsg32_support/meshes/WSG32_finger.stl" />
+                </geometry>
+                <material name="wsg50-greyish">
+                    <color rgba="0.8 0.8 0.8 1"/>
+                </material>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0.07"/>
+                <geometry>
+                    <box size="0.04 0.02 0.02" />
+                </geometry>
+            </collision>
+        </link>
+        <link name="${prefix}finger_right_frame">
+            <visual>
+                <geometry>
+                    <mesh filename="package://weiss_wsg32_support/meshes/WSG32_finger.stl" />
+                </geometry>
+                <material name="wsg50-greyish">
+                    <color rgba="0.8 0.8 0.8 1"/>
+                </material>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0.07"/>
+                <geometry>
+                    <box size="0.04 0.02 0.02" />
+                </geometry>
+            </collision>
+        </link>
+
+    </xacro:macro>
+
+</robot>

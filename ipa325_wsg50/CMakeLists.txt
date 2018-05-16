@@ -10,6 +10,7 @@ find_package(catkin
     std_msgs
     actionlib
     actionlib_msgs
+    sensor_msgs
     trajectory_msgs
     message_generation
 ##  additional packages

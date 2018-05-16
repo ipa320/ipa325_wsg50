@@ -4,6 +4,8 @@
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 
+#include <sensor_msgs/JointState.h>
+
 #include "WSG50ROSNode.h"
 #include "WSG50Controller.h"
 #include "WSG50Observer.h"
@@ -45,6 +47,9 @@
 #define FORCELIMIT  10          // in Newton
 #define ACCELERATION 200        // in mm/s²
 
+// Gripper finger joint name
+//
+#define DEFAULTJOINTNAME  "finger_left"
 
 // local variables
 //
@@ -382,7 +387,7 @@ public:
 /*
  *  runs a loop to publish gripper states in ROS
  */
-void publishStates()
+void publishStates(std::string &jointName)
 {
     float softLimits[2];
 
@@ -413,6 +418,7 @@ void publishStates()
     //
     ipa325_wsg50::systState systStateMsg;
     ros::Publisher  statePublisher = node.advertise<ipa325_wsg50::systState>("system_state", 10);
+    ros::Publisher  jointStatePublisher = node.advertise<sensor_msgs::JointState>("joint_states", 1);
 
     // start publishing loop
     //
@@ -450,6 +456,16 @@ void publishStates()
         // publish message
         //
         statePublisher.publish(systStateMsg);
+
+        // publish joint position
+        //
+        sensor_msgs::JointState jointStateMsg;
+        jointStateMsg.name.push_back(jointName);
+        jointStateMsg.position.push_back(systStateMsg.width/1000.0);
+        jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
+        jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
+
+        jointStatePublisher.publish(jointStateMsg);
 
         // spin once (for incomming messages)
         //
@@ -602,8 +618,10 @@ int main(int argc, char** argv)
     // Initialize controller
     //
     std::string ip, port;
+    std::string jointName;
     ros::param::param<std::string>("~ip", ip, DEFAULTIP);
     ros::param::param<std::string>("~port", port, DEFAULTPORT);
+    ros::param::param<std::string>("~joint_name", jointName, DEFAULTJOINTNAME);
     ROS_INFO_STREAM("Connecting to " << ip << ":" << port << "...");
     try {
         _controller = new WSG50Controller(ip, port);
@@ -626,7 +644,7 @@ int main(int argc, char** argv)
     // start publishing loop in separate thread
     //
     ROS_INFO("call publishStates() method");
-    boost::thread t(publishStates);
+    boost::thread t(publishStates, jointName);
 
     // wait XX miliseconds, so the publishing-cycle can become active
     boost::this_thread::sleep(boost::posix_time::millisec(500));

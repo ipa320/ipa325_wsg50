@@ -462,7 +462,10 @@ void publishStates(std::string &jointName)
         sensor_msgs::JointState jointStateMsg;
         jointStateMsg.header.stamp = ros::Time::now();
         jointStateMsg.name.push_back(jointName);
-        jointStateMsg.position.push_back(systStateMsg.width/1000.0);
+        //the gripper returns the total opening but we need the value of
+        //a single finger. This can then be combined with a mimic joint for
+        //the second finger
+        jointStateMsg.position.push_back(systStateMsg.width/1000.0/2.0);
         jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
         jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
 

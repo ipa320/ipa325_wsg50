@@ -141,7 +141,6 @@ WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
 
     // initialize startup variables
     //
-    this->_connection           = nullptr;
     this->_checkingConnection   = false;
     this->_respMsgDataAllocated = false;
     this->_respTCPBuffAllocated = false;
@@ -182,7 +181,7 @@ void WSG50Communicator::startConnection(void)
     // start separate thread for the connection
     //
     this->_keep_alive = true;
-    _connection = new std::thread(std::bind(&WSG50Communicator::connect, this));
+    _connection = std::make_shared<std::thread>(std::bind(&WSG50Communicator::connect, this));
 }
 
 /*

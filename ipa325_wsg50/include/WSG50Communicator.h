@@ -125,7 +125,7 @@ private:
      * Networking
      */
     boost::asio::ip::tcp::resolver::iterator _endpoint_iterator;
-    std::thread *_connection;
+    std::shared_ptr<std::thread> _connection;
     bool _keep_alive;
     void connect();
 

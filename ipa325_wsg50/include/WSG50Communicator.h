@@ -9,9 +9,10 @@
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
-#include <boost/thread.hpp>
 #include "WSG50Subject.h"
 #include "WSG50Observer.h"
 
@@ -19,7 +20,7 @@
 
 //! Typedef for Callback methods
 //!
-typedef boost::function1<void, TRESPONSE> callbackTRESPONSE;
+typedef std::function<void(TRESPONSE)> callbackTRESPONSE;
 
 
 
@@ -124,7 +125,7 @@ private:
      * Networking
      */
     boost::asio::ip::tcp::resolver::iterator _endpoint_iterator;
-    boost::thread *_connection;
+    std::thread *_connection;
     bool _keep_alive;
     void connect();
 
@@ -163,5 +164,5 @@ private:
     /**
      * threading
      */
-    boost::mutex    _wsgBufferMutex;
+    std::mutex    _wsgBufferMutex;
 };

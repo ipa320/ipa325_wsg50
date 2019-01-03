@@ -4,7 +4,6 @@
 #include <fstream>
 #include <stdlib.h>
 #include <ros/ros.h>
-#include <boost/thread/mutex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/posix_time/posix_time_io.hpp>
@@ -183,7 +182,7 @@ void WSG50Communicator::startConnection(void)
     // start separate thread for the connection
     //
     this->_keep_alive = true;
-    _connection = new boost::thread(boost::bind(&WSG50Communicator::connect, this));
+    _connection = new std::thread(std::bind(&WSG50Communicator::connect, this));
 }
 
 /*

@@ -842,7 +842,7 @@ void WSG50Controller::stop()
 
     _msg.id = _STOP;
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // prevent further commands:
     //
@@ -873,7 +873,7 @@ void WSG50Controller::fastStop()
 
     _msg.id = _FASTSTOP;
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // send message
     //
@@ -1404,7 +1404,7 @@ void WSG50Controller::clearSoftLimits()
     //
     _msg.id = _CLRSOFTLIMIT;
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // Send Message
     //
@@ -1805,7 +1805,7 @@ void WSG50Controller::getSoftLimits(float *softLimits)
         //
         _msg.id = _GETSOFTLIMIT;  // Get Acceleration
         _msg.length = 0;
-        _msg.data = 0;
+        _msg.data = nullptr;
 
         // Send Message
         //
@@ -1856,7 +1856,7 @@ float WSG50Controller::getForceLimit()
     //
     _msg.id = _GETFORCELIMIT;  // Get Acceleration
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // Send Message
     //

@@ -142,7 +142,7 @@ WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
 
     // initialize startup variables
     //
-    this->_connection           = NULL;
+    this->_connection           = nullptr;
     this->_checkingConnection   = false;
     this->_respMsgDataAllocated = false;
     this->_respTCPBuffAllocated = false;
@@ -173,7 +173,7 @@ void WSG50Communicator::startConnection(void)
 
     // check if connection is already set
     //
-    if(_connection != NULL) {
+    if(_connection != nullptr) {
         if(DEBUG) {
             ROS_WARN("It seems that already a connection is established!");
         }
@@ -690,9 +690,9 @@ bool WSG50Communicator::msg_send(TMESSAGE * msg )
 
     // Free allocated memory:
 //    if(DEBUG) std::cout << "buffer size: " << WSGSIZE << std::endl;
-    if(WSGSIZE > 0 && WSGBUF != 0) {
+    if(WSGSIZE > 0 && WSGBUF != nullptr) {
         delete[] WSGBUF;
-        WSGBUF = 0;
+        WSGBUF = nullptr;
         WSGSIZE = 0; // null pointer
     }
     return true;
@@ -749,7 +749,7 @@ unsigned char * WSG50Communicator::msg_build( TMESSAGE * msg, unsigned int *size
     if ( !buf )
     {
         *size = 0;
-        return( NULL );
+        return nullptr;
     }
 
     // Assemble the message header:
@@ -776,7 +776,7 @@ unsigned char * WSG50Communicator::msg_build( TMESSAGE * msg, unsigned int *size
 void WSG50Communicator::createDisconnectMessage(TMESSAGE * msg)
 {
     msg->id = _DISCONNECT;
-    msg->data = NULL;
+    msg->data = nullptr;
     msg->length = 0;
 }
 
@@ -824,7 +824,7 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
 
     // reset data pointer
     //
-    respMsg.data = 0;
+    respMsg.data = nullptr;
 
     // check if given tcp length is less than length given in message
     //

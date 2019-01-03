@@ -54,7 +54,7 @@
 // local variables
 //
 bool                        g_active = true;
-static WSG50Controller * _controller = NULL;
+static WSG50Controller * _controller = nullptr;
 
 /*
  * handle SIGINT messages
@@ -67,7 +67,7 @@ void mySigintHandler(int)
     if(DEBUG) ROS_INFO("trying to delete controller");
     delete _controller;
     if(DEBUG) ROS_INFO("Controller deleted!");
-    _controller = 0;
+    _controller = nullptr;
 }
 
 bool ready(int timeout)

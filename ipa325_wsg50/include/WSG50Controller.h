@@ -103,7 +103,7 @@ public:
     //
     WSG50Controller(void);
     WSG50Controller(std::string ip, std::string port);
-    ~WSG50Controller(void);
+    virtual ~WSG50Controller(void);
 
 
     /**

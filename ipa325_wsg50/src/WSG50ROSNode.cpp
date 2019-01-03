@@ -123,7 +123,7 @@ public:
     }
 
     // Destructor
-    ~WSG50HomingAction(void)
+    virtual ~WSG50HomingAction(void)
     {
         _controller->Detach(this, 0x21);
     }
@@ -146,7 +146,7 @@ public:
      *  override parent method
      */
     using WSG50RosObserver::update;
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
 
         // if pending or already running, send feedback
@@ -202,7 +202,7 @@ public:
         prepositionserver_.start();
     }
 
-    ~WSG50PrePositionFingersActionServer(void) {_controller->Detach(this, 0x21);}
+    virtual ~WSG50PrePositionFingersActionServer(void) {_controller->Detach(this, 0x21);}
 
     void doPrePositionFingers()
     {
@@ -227,7 +227,7 @@ public:
         _controller->prePositionFingers(stopOnBlock_, width_, speed_);
     }
 
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
         if(response->id == 0x21) {
             if(DEBUG) ROS_INFO("node: send feedback / result message");
@@ -285,7 +285,7 @@ public:
         gpserver_.start();
     }
 
-    ~WSG50GraspPartActionServer() {_controller->Detach(this, 0x25);}
+    virtual ~WSG50GraspPartActionServer() {_controller->Detach(this, 0x25);}
 
     void doGrasp()
     {
@@ -298,7 +298,7 @@ public:
         _controller->grasp(width_, speed_);
     }
 
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
         if(response->id==0x25) {        // send result response
             res_.status_code=response->status_code;
@@ -345,7 +345,7 @@ public:
         rpserver_.start();
     }
 
-    ~WSG50ReleasePartActionServer() {_controller->Detach(this, 0x26);}
+    virtual ~WSG50ReleasePartActionServer() {_controller->Detach(this, 0x26);}
 
     void doRelease()
     {
@@ -358,7 +358,7 @@ public:
         _controller->release(width_, speed_);
     }
 
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
         if(response->id==0x26) {        // send result response
             res_.status_code=response->status_code;
@@ -402,7 +402,7 @@ void publishStates(std::string &jointName)
     // subscribe to regular updates
     //
     if(DEBUG) ROS_INFO("subscribing to autoupdates for width, speed, force and grasping state.");
-    int updatePeriodInMs = PUBLISHINGINTERVAL;
+    short updatePeriodInMs = PUBLISHINGINTERVAL;
     _controller->getOpeningWidthUpdates(false, true, updatePeriodInMs);
     boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
     _controller->getSpeedUpdates(false, true, updatePeriodInMs);
@@ -680,7 +680,7 @@ int main(int argc, char** argv)
     t.join();
 
     ROS_WARN("closing down ROS-Node");
-    if(_controller != 0) {
+    if(_controller != nullptr) {
         delete _controller;
     }
 

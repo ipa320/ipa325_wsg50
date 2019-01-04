@@ -81,9 +81,6 @@ public:
 
     void            printErrorCode(TStat ec);
 
-    void            log(int logLevel, const std::string &msg);
-
-
 
     /*! #################################################################
      *  DEPRECATED!

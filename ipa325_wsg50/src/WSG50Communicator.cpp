@@ -4,19 +4,11 @@
 #include <fstream>
 #include <stdlib.h>
 #include <ros/ros.h>
-#include <boost/algorithm/string.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/posix_time/posix_time_io.hpp>
 
 using namespace boost;
 using namespace std;
 
 #define DEBUG       3
-#define INFO        2
-#define WARN        1
-#define ERROR       0
-#define LOGLEVEL    0
-#define LOGFILEPATH "/home/rfa-fr/florian_ws/logs/comm_log.txt"
 
 #ifndef SER_MSG_NUM_HEADER_BYTES
 #define SER_MSG_NUM_HEADER_BYTES    3       //!< number of header bytes
@@ -131,9 +123,7 @@ static short _GETFINGERDATA     = 0x63;     // return the current finger data fo
 
 WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
 {
-    std::stringstream msg;
-    msg << "WSG50Communicator(): IP = " << ip.c_str() << ", PORT = " << port.c_str();
-    log(INFO, msg.str());
+    ROS_INFO_STREAM("WSG50Communicator(): IP = " << ip << ", PORT = " << port);
     // set ip and port
     //
     this->_IP = ip;
@@ -153,9 +143,7 @@ WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
  */
 WSG50Communicator::~WSG50Communicator(void)
 {
-    logmsg.str("");
-    logmsg << "\n\n###########################################\n# Closing down";
-    log(WARN, logmsg.str());
+    ROS_DEBUG("Closing down");
 
     // stop and release connection
     //
@@ -920,45 +908,6 @@ int WSG50Communicator::findOccurence(unsigned char *ar,
     }
     return returnValue;
 }
-
-
-// write into a log file
-//
-void WSG50Communicator::log(int logLevel, const string &msg)
-{
-    bool fileExists;
-    FILE* logFile;
-    boost::posix_time::time_facet *time = new boost::posix_time::time_facet("%H:%M:%S");
-
-    // check log-levels
-    //
-    if(logLevel <= LOGLEVEL) {
-        // check if logfile exists
-        logFile = fopen(LOGFILEPATH, "r");
-        if(logFile) {
-            fileExists = true;
-            fclose(logFile);
-        } else {
-            cout << "log-file does not exist" << endl;
-            fileExists = false;
-        }
-
-        // try opening file,
-        // if file does not exist, create new file
-        if(fileExists) {
-            logFile = fopen(LOGFILEPATH, "a+");
-        } else{
-            logFile = fopen(LOGFILEPATH, "w");
-        }
-        // create log-string
-        std::stringstream logstr;
-        logstr << boost::posix_time::second_clock::local_time();
-        logstr << "\t LOG: " <<  logLevel << "\t " << msg;
-        fprintf(logFile, "%s\n", logstr.str().c_str());
-        fclose(logFile);
-    }
-}
-
 
 void WSG50Communicator::clearIMsgBuffer() {
     int i=0;

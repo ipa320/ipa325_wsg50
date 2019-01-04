@@ -1,8 +1,8 @@
 #include <signal.h>
 #include <string.h>
 #include <stdlib.h>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <chrono>
+#include <thread>
 
 #include <sensor_msgs/JointState.h>
 
@@ -77,7 +77,7 @@ bool ready(int timeout)
         if(counter > TIMEOUT) {
             return false;
         }
-        boost::this_thread::sleep(boost::posix_time::millisec(TIMEFORWAITINGLOOP));
+        std::this_thread::sleep_for(std::chrono::milliseconds(TIMEFORWAITINGLOOP));
         counter++;
     }
     return true;
@@ -404,13 +404,13 @@ void publishStates(std::string &jointName)
     if(DEBUG) ROS_INFO("subscribing to autoupdates for width, speed, force and grasping state.");
     short updatePeriodInMs = PUBLISHINGINTERVAL;
     _controller->getOpeningWidthUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
     _controller->getSpeedUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
     _controller->getForceUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
     _controller->getGraspingStateUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
 
     ROS_INFO("publishStates(): subscribed to updates of 'widht', 'speed', 'force', 'grasping state'");
 
@@ -645,10 +645,10 @@ int main(int argc, char** argv)
     // start publishing loop in separate thread
     //
     ROS_INFO("call publishStates() method");
-    boost::thread t(publishStates, jointName);
+    std::thread t(publishStates, std::ref(jointName));
 
     // wait XX miliseconds, so the publishing-cycle can become active
-    boost::this_thread::sleep(boost::posix_time::millisec(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // Subscribe to actions
     //

@@ -8,7 +8,6 @@
  */
 
 #include <boost/asio.hpp>
-#include <boost/array.hpp>
 #include <mutex>
 #include <string>
 #include <thread>

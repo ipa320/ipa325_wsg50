@@ -110,7 +110,7 @@ public:
 
         ROS_WARN("initializing homing action.");
         // register goal and feedback callbacks
-        homingserver_.registerGoalCallback(boost::bind(&WSG50HomingAction::doHoming, this));
+        homingserver_.registerGoalCallback(std::bind(&WSG50HomingAction::doHoming, this));
 
 
         // subscribe result/feedback callback methods at controller
@@ -195,7 +195,7 @@ public:
         action_name(name)
     {
         // register callback
-        prepositionserver_.registerGoalCallback(boost::bind(&WSG50PrePositionFingersActionServer::doPrePositionFingers, this));
+        prepositionserver_.registerGoalCallback(std::bind(&WSG50PrePositionFingersActionServer::doPrePositionFingers, this));
         // register observer
         _controller->Attach(this, 0x21);
         // start server
@@ -280,7 +280,7 @@ protected:
     float width_, speed_;
 public:
     WSG50GraspPartActionServer(std::string name) : gpserver_(nh_, name, false), action_name(name) {
-        gpserver_.registerGoalCallback(boost::bind(&WSG50GraspPartActionServer::doGrasp, this));
+        gpserver_.registerGoalCallback(std::bind(&WSG50GraspPartActionServer::doGrasp, this));
         _controller->Attach(this,0x25);
         gpserver_.start();
     }
@@ -340,7 +340,7 @@ protected:
     float width_, speed_;
 public:
     WSG50ReleasePartActionServer(std::string name) : rpserver_(nh_, name, false), action_name(name) {
-        rpserver_.registerGoalCallback(boost::bind(&WSG50ReleasePartActionServer::doRelease, this));
+        rpserver_.registerGoalCallback(std::bind(&WSG50ReleasePartActionServer::doRelease, this));
         _controller->Attach(this,0x26);
         rpserver_.start();
     }

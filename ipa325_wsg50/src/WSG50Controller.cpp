@@ -743,11 +743,10 @@ bool WSG50Controller::ready(void)
 bool WSG50Controller::isCommunicationOk()
 {
 
-    int     i,
-            counter,
+    int     counter,
             millisec,
             timeoutInMillisec;
-    boost::array<unsigned char, 8> data;
+    std::array<unsigned char, 8> data;
     bool    returnValue = false,
             runIntoTimeout = false;
 
@@ -766,13 +765,13 @@ bool WSG50Controller::isCommunicationOk()
 
     _msg.id = _LOOP;
 
-    for(i=0; i<8; i++) data[i] = 0xff;
+    for(size_t i=0; i<8; i++) data[i] = 0xff;
 
     _msg.length = 8;
-    _msg.data = data.c_array();
+    _msg.data = data.data();
 
     // store, so that it won't be lost
-    this->_LoopTestData = data.c_array();
+    this->_LoopTestData = data.data();
     this->_LoopTestDataLength = _msg.length;
 
     this->_wsgComm->pushMessage(&_msg);
@@ -941,7 +940,7 @@ void WSG50Controller::homing(unsigned int direction)
     //
 
     TMESSAGE msg;
-    boost::array<unsigned char, 1> data;
+    std::array<unsigned char, 1> data;
 
     msg.id = _HOMING;
 
@@ -956,7 +955,7 @@ void WSG50Controller::homing(unsigned int direction)
         data[0] = 0x00;
 
     msg.length = 1;
-    msg.data = data.c_array();
+    msg.data = data.data();
 
 
     // *****************************************************************

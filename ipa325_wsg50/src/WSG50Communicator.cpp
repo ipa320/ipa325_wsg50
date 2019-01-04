@@ -29,8 +29,8 @@ using namespace std;
 boost::asio::io_service io_service;
 boost::asio::ip::tcp::resolver resolver(io_service);
 boost::asio::ip::tcp::socket sock(io_service);
-boost::array<char, 512> buffer;
-boost::array<std::string, 64> _splitMessages;
+std::array<char, 512> buffer;
+std::array<std::string, 64> _splitMessages;
 
 using boost::asio::ip::tcp;
 
@@ -220,7 +220,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 {
     TRESPONSE       responseMsg;
     unsigned char*  responseTCPBuffer;
-    unsigned char*  completeResponse = (unsigned char * ) buffer.c_array();
+    unsigned char*  completeResponse = (unsigned char * ) buffer.data();
     unsigned char*  partResponse;
     int             bufflength,
                     index, i,
@@ -251,7 +251,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 
         // convert message into array
         //
-        responseTCPBuffer = (unsigned char * ) buffer.c_array();
+        responseTCPBuffer = (unsigned char * ) buffer.data();
         this->_respTCPBuffAllocated = true;
 //        if(DEBUG) this->printHexArray(responseTCPBuffer, len);
 

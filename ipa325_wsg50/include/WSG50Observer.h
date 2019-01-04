@@ -1,8 +1,5 @@
 #pragma once
 
-#include "WSG50Subject.h"
-//class WSG50Subject;
-
 //! Status codes
 typedef enum
 {

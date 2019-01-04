@@ -28,9 +28,7 @@
 #include "WSG50RosSubject.h"
 #include "WSG50RosObserver.h"
 
-#include <boost/asio.hpp>
-#include <boost/array.hpp>
-#include <boost/thread.hpp>
+#include <mutex>
 #include <queue>
 #include <string>
 
@@ -271,7 +269,7 @@ private:
 
     // threading
     //
-    boost::mutex    _msgMutex,
+    std::mutex      _msgMutex,
                     _currentForceMutex,
                     _currentSpeedMutex,
                     _currentWidthMutex,

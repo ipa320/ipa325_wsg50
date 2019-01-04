@@ -1,11 +1,10 @@
 #include "WSG50Controller.h"
+#include <chrono>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-
+#include <mutex>
+#include <thread>
 
 /* ###########################################
  * ###   Define Default Values   #############
@@ -279,7 +278,7 @@ void WSG50Controller::setupConnection()
 
     // need to wait certain time, otherwise connection won't be established.
     //
-    boost::this_thread::sleep(boost::posix_time::millisec(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // checking connection state
     //
@@ -321,7 +320,8 @@ void WSG50Controller::update(TRESPONSE * resp)
 
     // call updateHandler in new thread
     //
-    boost::thread(boost::bind(&WSG50Controller::updateHandler, this));
+    std::thread t(&WSG50Controller::updateHandler, this);
+    t.detach();
 }
 
 
@@ -790,7 +790,7 @@ bool WSG50Controller::isCommunicationOk()
     counter = 0;
     while(_checkingCommunication)
     {
-        boost::this_thread::sleep(boost::posix_time::millisec(millisec));
+        std::this_thread::sleep_for(std::chrono::milliseconds(millisec));
 
         if((millisec * counter) >= timeoutInMillisec)
         {
@@ -1500,7 +1500,7 @@ float WSG50Controller::getWidth(void)
 
         // Loop Wait for Response
         //
-        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+        while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
         count++;
     }
@@ -1540,7 +1540,7 @@ float WSG50Controller::getSpeed(void)
                 return -1;
             }
 
-            boost::this_thread::sleep(boost::posix_time::millisec(20));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
             count++;
         }
@@ -1579,7 +1579,7 @@ float WSG50Controller::getForce(void)
                 return -1;
             }
 
-            boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
 
             count++;
         }
@@ -1607,7 +1607,7 @@ void WSG50Controller::getOpeningWidthUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false
@@ -1669,7 +1669,7 @@ void WSG50Controller::getForceUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false
@@ -1732,7 +1732,7 @@ void WSG50Controller::getSpeedUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false
@@ -1816,7 +1816,7 @@ void WSG50Controller::getSoftLimits(float *softLimits)
 
         // Loop Wait for Response
         //
-        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+        while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     // ****************************************************
@@ -1867,7 +1867,7 @@ float WSG50Controller::getForceLimit()
 
     // Loop Wait for Response
     //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     // return Acceleration
     //
@@ -1908,7 +1908,7 @@ float WSG50Controller::getAcceleration()
 
     // Loop Wait for Response
     //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     // return Acceleration
     //
@@ -1966,7 +1966,7 @@ SSTATE WSG50Controller::getSystemState(bool updateOnChangeOnly,
 
     // wait for response
     //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     // return state
     //
@@ -1998,7 +1998,7 @@ int WSG50Controller::getGraspingState()
                 return -1;
             }
             // sleep
-            boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
             count++;
         }
     }
@@ -2021,7 +2021,7 @@ void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false

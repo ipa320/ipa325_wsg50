@@ -136,7 +136,6 @@ add_dependencies(schunk_testclient ${PROJECT_NAME}_gencpp)
 add_executable(schunk_gripper
     #src/testerGripper.cpp
     src/WSG50ROSNode.cpp
-    src/WSG50Observer.cpp
     src/WSG50Subject.cpp
     src/WSG50Controller.cpp
     src/WSG50Communicator.cpp

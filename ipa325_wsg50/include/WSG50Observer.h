@@ -83,6 +83,6 @@ typedef struct
 class WSG50Observer
 {
 public:
-    virtual void update(TRESPONSE * response);
+    virtual void update(TRESPONSE * response) = 0;
 
 };

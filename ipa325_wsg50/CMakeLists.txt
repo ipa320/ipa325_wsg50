@@ -54,8 +54,6 @@ add_action_files(
 ## Generate messages in the 'msg' folder
 add_message_files(
     FILES
-#   Message1.msg
-#   Message2.msg
     systState.msg
 )
 
@@ -189,11 +187,13 @@ install(TARGETS schunk_gripper
 # )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(DIRECTORY
+  etc
+  launch
+  meshes
+  urdf
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##

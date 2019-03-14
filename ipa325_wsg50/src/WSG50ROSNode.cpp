@@ -460,6 +460,7 @@ void publishStates(std::string &jointName)
         // publish joint position
         //
         sensor_msgs::JointState jointStateMsg;
+        jointStateMsg.header.stamp = ros::Time::now();
         jointStateMsg.name.push_back(jointName);
         jointStateMsg.position.push_back(systStateMsg.width/1000.0);
         jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);

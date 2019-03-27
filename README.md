@@ -22,6 +22,7 @@ Project runtime: 02.09.2013 – 31.08.2017.
 
 ## ROS-Node Documentation
 Special Thanks to Mainauthor **Florian Röser**
+Current maintainer **Lorenz Halt**
 
 this section contains the API of the ROS-Node for the WSG50 Driver.
 

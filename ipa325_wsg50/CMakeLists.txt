@@ -15,7 +15,6 @@ find_package(catkin
     actionlib
     actionlib_msgs
     sensor_msgs
-    tf2
     trajectory_msgs
     message_generation
 ##  additional packages

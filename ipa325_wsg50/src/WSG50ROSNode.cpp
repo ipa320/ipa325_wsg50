@@ -50,6 +50,7 @@
 // Gripper finger joint name
 //
 #define DEFAULTJOINTNAME  "finger_left"
+#define DEFAULTOPENINGJOINTNAME "gripper_opening"
 
 // local variables
 //
@@ -387,7 +388,7 @@ public:
 /*
  *  runs a loop to publish gripper states in ROS
  */
-void publishStates(std::string &jointName)
+void publishStates(const std::string &jointName, const std::string &openingJointName)
 {
     float softLimits[2];
 
@@ -462,6 +463,15 @@ void publishStates(std::string &jointName)
         sensor_msgs::JointState jointStateMsg;
         jointStateMsg.header.stamp = ros::Time::now();
         jointStateMsg.name.push_back(jointName);
+        //the gripper returns the total opening but we need the value of
+        //a single finger. This can then be combined with a mimic joint for
+        //the second finger
+        jointStateMsg.position.push_back(systStateMsg.width/1000.0/2.0);
+        jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
+        jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
+
+        //alternatively you can also use the full gripper opening
+        jointStateMsg.name.push_back(openingJointName);
         jointStateMsg.position.push_back(systStateMsg.width/1000.0);
         jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
         jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
@@ -619,10 +629,11 @@ int main(int argc, char** argv)
     // Initialize controller
     //
     std::string ip, port;
-    std::string jointName;
+    std::string jointName, openingJointName;
     ros::param::param<std::string>("~ip", ip, DEFAULTIP);
     ros::param::param<std::string>("~port", port, DEFAULTPORT);
     ros::param::param<std::string>("~joint_name", jointName, DEFAULTJOINTNAME);
+    ros::param::param<std::string>("~opening_joint_name", openingJointName, DEFAULTOPENINGJOINTNAME);
     ROS_INFO_STREAM("Connecting to " << ip << ":" << port << "...");
     try {
         _controller = new WSG50Controller(ip, port);
@@ -645,7 +656,7 @@ int main(int argc, char** argv)
     // start publishing loop in separate thread
     //
     ROS_INFO("call publishStates() method");
-    std::thread t(publishStates, std::ref(jointName));
+    std::thread t(publishStates, std::ref(jointName), std::ref(openingJointName));
 
     // wait XX miliseconds, so the publishing-cycle can become active
     std::this_thread::sleep_for(std::chrono::milliseconds(500));

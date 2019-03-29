@@ -1,5 +1,9 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1.0)
 project(ipa325_wsg50)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -19,11 +23,7 @@ find_package(catkin
 ## System dependencies are found with CMake's conventions
 find_package(Boost
     REQUIRED COMPONENTS
-    thread
     system
-#    filesystem
-    iostreams
-    regex
 )
 
 
@@ -54,8 +54,6 @@ add_action_files(
 ## Generate messages in the 'msg' folder
 add_message_files(
     FILES
-#   Message1.msg
-#   Message2.msg
     systState.msg
 )
 
@@ -133,7 +131,6 @@ add_dependencies(schunk_testclient ${PROJECT_NAME}_gencpp)
 add_executable(schunk_gripper
     #src/testerGripper.cpp
     src/WSG50ROSNode.cpp
-    src/WSG50Observer.cpp
     src/WSG50Subject.cpp
     src/WSG50Controller.cpp
     src/WSG50Communicator.cpp
@@ -190,11 +187,13 @@ install(TARGETS schunk_gripper
 # )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(DIRECTORY
+  etc
+  launch
+  meshes
+  urdf
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##

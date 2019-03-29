@@ -1,8 +1,8 @@
 #include <signal.h>
 #include <string.h>
 #include <stdlib.h>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <chrono>
+#include <thread>
 
 #include <sensor_msgs/JointState.h>
 
@@ -54,7 +54,7 @@
 // local variables
 //
 bool                        g_active = true;
-static WSG50Controller * _controller = NULL;
+static WSG50Controller * _controller = nullptr;
 
 /*
  * handle SIGINT messages
@@ -67,7 +67,7 @@ void mySigintHandler(int)
     if(DEBUG) ROS_INFO("trying to delete controller");
     delete _controller;
     if(DEBUG) ROS_INFO("Controller deleted!");
-    _controller = 0;
+    _controller = nullptr;
 }
 
 bool ready(int timeout)
@@ -77,7 +77,7 @@ bool ready(int timeout)
         if(counter > TIMEOUT) {
             return false;
         }
-        boost::this_thread::sleep(boost::posix_time::millisec(TIMEFORWAITINGLOOP));
+        std::this_thread::sleep_for(std::chrono::milliseconds(TIMEFORWAITINGLOOP));
         counter++;
     }
     return true;
@@ -110,7 +110,7 @@ public:
 
         ROS_WARN("initializing homing action.");
         // register goal and feedback callbacks
-        homingserver_.registerGoalCallback(boost::bind(&WSG50HomingAction::doHoming, this));
+        homingserver_.registerGoalCallback(std::bind(&WSG50HomingAction::doHoming, this));
 
 
         // subscribe result/feedback callback methods at controller
@@ -123,7 +123,7 @@ public:
     }
 
     // Destructor
-    ~WSG50HomingAction(void)
+    virtual ~WSG50HomingAction(void)
     {
         _controller->Detach(this, 0x21);
     }
@@ -146,7 +146,7 @@ public:
      *  override parent method
      */
     using WSG50RosObserver::update;
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
 
         // if pending or already running, send feedback
@@ -195,14 +195,14 @@ public:
         action_name(name)
     {
         // register callback
-        prepositionserver_.registerGoalCallback(boost::bind(&WSG50PrePositionFingersActionServer::doPrePositionFingers, this));
+        prepositionserver_.registerGoalCallback(std::bind(&WSG50PrePositionFingersActionServer::doPrePositionFingers, this));
         // register observer
         _controller->Attach(this, 0x21);
         // start server
         prepositionserver_.start();
     }
 
-    ~WSG50PrePositionFingersActionServer(void) {_controller->Detach(this, 0x21);}
+    virtual ~WSG50PrePositionFingersActionServer(void) {_controller->Detach(this, 0x21);}
 
     void doPrePositionFingers()
     {
@@ -227,7 +227,7 @@ public:
         _controller->prePositionFingers(stopOnBlock_, width_, speed_);
     }
 
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
         if(response->id == 0x21) {
             if(DEBUG) ROS_INFO("node: send feedback / result message");
@@ -280,12 +280,12 @@ protected:
     float width_, speed_;
 public:
     WSG50GraspPartActionServer(std::string name) : gpserver_(nh_, name, false), action_name(name) {
-        gpserver_.registerGoalCallback(boost::bind(&WSG50GraspPartActionServer::doGrasp, this));
+        gpserver_.registerGoalCallback(std::bind(&WSG50GraspPartActionServer::doGrasp, this));
         _controller->Attach(this,0x25);
         gpserver_.start();
     }
 
-    ~WSG50GraspPartActionServer() {_controller->Detach(this, 0x25);}
+    virtual ~WSG50GraspPartActionServer() {_controller->Detach(this, 0x25);}
 
     void doGrasp()
     {
@@ -298,7 +298,7 @@ public:
         _controller->grasp(width_, speed_);
     }
 
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
         if(response->id==0x25) {        // send result response
             res_.status_code=response->status_code;
@@ -340,12 +340,12 @@ protected:
     float width_, speed_;
 public:
     WSG50ReleasePartActionServer(std::string name) : rpserver_(nh_, name, false), action_name(name) {
-        rpserver_.registerGoalCallback(boost::bind(&WSG50ReleasePartActionServer::doRelease, this));
+        rpserver_.registerGoalCallback(std::bind(&WSG50ReleasePartActionServer::doRelease, this));
         _controller->Attach(this,0x26);
         rpserver_.start();
     }
 
-    ~WSG50ReleasePartActionServer() {_controller->Detach(this, 0x26);}
+    virtual ~WSG50ReleasePartActionServer() {_controller->Detach(this, 0x26);}
 
     void doRelease()
     {
@@ -358,7 +358,7 @@ public:
         _controller->release(width_, speed_);
     }
 
-    void update(TRESPONSE *response)
+    void update(TRESPONSE *response) override
     {
         if(response->id==0x26) {        // send result response
             res_.status_code=response->status_code;
@@ -402,15 +402,15 @@ void publishStates(std::string &jointName)
     // subscribe to regular updates
     //
     if(DEBUG) ROS_INFO("subscribing to autoupdates for width, speed, force and grasping state.");
-    int updatePeriodInMs = PUBLISHINGINTERVAL;
+    short updatePeriodInMs = PUBLISHINGINTERVAL;
     _controller->getOpeningWidthUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
     _controller->getSpeedUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
     _controller->getForceUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
     _controller->getGraspingStateUpdates(false, true, updatePeriodInMs);
-    boost::this_thread::sleep(boost::posix_time::millisec((TIMEFORWAITINGLOOP*5)));
+    std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
 
     ROS_INFO("publishStates(): subscribed to updates of 'widht', 'speed', 'force', 'grasping state'");
 
@@ -645,10 +645,10 @@ int main(int argc, char** argv)
     // start publishing loop in separate thread
     //
     ROS_INFO("call publishStates() method");
-    boost::thread t(publishStates, jointName);
+    std::thread t(publishStates, std::ref(jointName));
 
     // wait XX miliseconds, so the publishing-cycle can become active
-    boost::this_thread::sleep(boost::posix_time::millisec(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // Subscribe to actions
     //
@@ -680,7 +680,7 @@ int main(int argc, char** argv)
     t.join();
 
     ROS_WARN("closing down ROS-Node");
-    if(_controller != 0) {
+    if(_controller != nullptr) {
         delete _controller;
     }
 

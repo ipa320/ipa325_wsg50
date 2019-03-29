@@ -1,10 +1,9 @@
 
 #include <ros/ros.h>
-#include <tf/tf.h>
 
-
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
+#include <chrono>
+#include <mutex>
+#include <thread>
 
 #include <signal.h>
 
@@ -33,7 +32,7 @@
 // contents
 //
 
-boost::mutex    g_mutex;
+std::mutex    g_mutex;
 
 
 #define DEBUG true
@@ -198,7 +197,7 @@ int main(int argc, char **argv)
     // test clear soft limits
     //
     ROS_INFO("Wait for x seconds");
-    boost::this_thread::sleep(boost::posix_time::millisec(2000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     ros::ServiceClient clearSoftLimitsClient = node.serviceClient<ipa325_wsg50::clearSoftLimits>("ClearSoftLimits");
     ipa325_wsg50::clearSoftLimits cslMsg;
     if(clearSoftLimitsClient.call(cslMsg))
@@ -228,7 +227,7 @@ int main(int argc, char **argv)
     // test preposition fingers
     //
     ROS_INFO("Wait for x seconds");
-    boost::this_thread::sleep(boost::posix_time::millisec(2000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     ROS_INFO("Testclient: test preposition fingers");
 
     // connect to action server
@@ -258,7 +257,7 @@ int main(int argc, char **argv)
     // test preposition fingers and interrupt with stop
     //
     ROS_INFO("Wait for x seconds");
-    boost::this_thread::sleep(boost::posix_time::millisec(2000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     ROS_INFO("Testclient: test preposition fingers and stop");
 
     // connect to action server
@@ -283,10 +282,10 @@ int main(int argc, char **argv)
         ros::spinOnce();
 
         // send stop message
-        boost::this_thread::sleep(boost::posix_time::millisec(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         if(count == 1000) { // wait 1 sec
             // send stop message
-            boost::this_thread::sleep(boost::posix_time::millisec(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             ros::ServiceClient stopClient = node.serviceClient<ipa325_wsg50::stop>("Stop");
             ipa325_wsg50::stop stopMsg;
             ROS_INFO("send stop message");
@@ -304,7 +303,7 @@ int main(int argc, char **argv)
     // test preposition fingers and interrupt with faststop
     //
     ROS_INFO("Wait for x seconds");
-    boost::this_thread::sleep(boost::posix_time::millisec(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     ROS_INFO("Testclient: test preposition fingers and stop");
 
     // send action goal
@@ -321,10 +320,10 @@ int main(int argc, char **argv)
         ros::spinOnce();
 
         // send stop message
-        boost::this_thread::sleep(boost::posix_time::millisec(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         if(count == 1000) { // wait 1 sec
             // send fast stop message
-            boost::this_thread::sleep(boost::posix_time::millisec(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             ros::ServiceClient fastStopClient = node.serviceClient<ipa325_wsg50::fastStop>("FastStop");
             ipa325_wsg50::stop fastStopMsg;
             ROS_INFO("send stop message");
@@ -341,7 +340,7 @@ int main(int argc, char **argv)
     // ******************************************
     // acknowledge fast stop
     //
-    boost::this_thread::sleep(boost::posix_time::millisec(2000)); // wait 2 sec
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // wait 2 sec
 
     ros::ServiceClient ackFastStopClient = node.serviceClient<ipa325_wsg50::ackFastStop>("AcknowledgeFastStop");
     ipa325_wsg50::ackFastStop ackMsg;
@@ -357,7 +356,7 @@ int main(int argc, char **argv)
 #if 0
     // test grasp part
     //
-    boost::this_thread::sleep(boost::posix_time::millisec(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ROS_INFO("Testclient: Grasping");
     // connect
     actionlib::SimpleActionClient<ipa325_wsg50::WSG50GraspPartAction> gpclient_("WSG50Gripper_GraspPartAction", true);
@@ -381,7 +380,7 @@ int main(int argc, char **argv)
 #if 0
     // test release part
     //
-    boost::this_thread::sleep(boost::posix_time::millisec(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ROS_INFO("Testclient: releasing");
     // connect
     actionlib::SimpleActionClient<ipa325_wsg50::WSG50ReleasePartAction> rpclient_("WSG50Gripper_ReleasePartAction", true);

@@ -28,9 +28,7 @@
 #include "WSG50RosSubject.h"
 #include "WSG50RosObserver.h"
 
-#include <boost/asio.hpp>
-#include <boost/array.hpp>
-#include <boost/thread.hpp>
+#include <mutex>
 #include <queue>
 #include <string>
 
@@ -103,7 +101,7 @@ public:
     //
     WSG50Controller(void);
     WSG50Controller(std::string ip, std::string port);
-    ~WSG50Controller(void);
+    virtual ~WSG50Controller(void);
 
 
     /**
@@ -271,7 +269,7 @@ private:
 
     // threading
     //
-    boost::mutex    _msgMutex,
+    std::mutex      _msgMutex,
                     _currentForceMutex,
                     _currentSpeedMutex,
                     _currentWidthMutex,

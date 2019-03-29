@@ -1,11 +1,10 @@
 #include "WSG50Controller.h"
+#include <chrono>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-
+#include <mutex>
+#include <thread>
 
 /* ###########################################
  * ###   Define Default Values   #############
@@ -279,7 +278,7 @@ void WSG50Controller::setupConnection()
 
     // need to wait certain time, otherwise connection won't be established.
     //
-    boost::this_thread::sleep(boost::posix_time::millisec(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // checking connection state
     //
@@ -321,7 +320,8 @@ void WSG50Controller::update(TRESPONSE * resp)
 
     // call updateHandler in new thread
     //
-    boost::thread(boost::bind(&WSG50Controller::updateHandler, this));
+    std::thread t(&WSG50Controller::updateHandler, this);
+    t.detach();
 }
 
 
@@ -743,11 +743,10 @@ bool WSG50Controller::ready(void)
 bool WSG50Controller::isCommunicationOk()
 {
 
-    int     i,
-            counter,
+    int     counter,
             millisec,
             timeoutInMillisec;
-    boost::array<unsigned char, 8> data;
+    std::array<unsigned char, 8> data;
     bool    returnValue = false,
             runIntoTimeout = false;
 
@@ -766,13 +765,13 @@ bool WSG50Controller::isCommunicationOk()
 
     _msg.id = _LOOP;
 
-    for(i=0; i<8; i++) data[i] = 0xff;
+    for(size_t i=0; i<8; i++) data[i] = 0xff;
 
     _msg.length = 8;
-    _msg.data = data.c_array();
+    _msg.data = data.data();
 
     // store, so that it won't be lost
-    this->_LoopTestData = data.c_array();
+    this->_LoopTestData = data.data();
     this->_LoopTestDataLength = _msg.length;
 
     this->_wsgComm->pushMessage(&_msg);
@@ -790,7 +789,7 @@ bool WSG50Controller::isCommunicationOk()
     counter = 0;
     while(_checkingCommunication)
     {
-        boost::this_thread::sleep(boost::posix_time::millisec(millisec));
+        std::this_thread::sleep_for(std::chrono::milliseconds(millisec));
 
         if((millisec * counter) >= timeoutInMillisec)
         {
@@ -842,7 +841,7 @@ void WSG50Controller::stop()
 
     _msg.id = _STOP;
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // prevent further commands:
     //
@@ -873,7 +872,7 @@ void WSG50Controller::fastStop()
 
     _msg.id = _FASTSTOP;
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // send message
     //
@@ -941,7 +940,7 @@ void WSG50Controller::homing(unsigned int direction)
     //
 
     TMESSAGE msg;
-    boost::array<unsigned char, 1> data;
+    std::array<unsigned char, 1> data;
 
     msg.id = _HOMING;
 
@@ -956,7 +955,7 @@ void WSG50Controller::homing(unsigned int direction)
         data[0] = 0x00;
 
     msg.length = 1;
-    msg.data = data.c_array();
+    msg.data = data.data();
 
 
     // *****************************************************************
@@ -1404,7 +1403,7 @@ void WSG50Controller::clearSoftLimits()
     //
     _msg.id = _CLRSOFTLIMIT;
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // Send Message
     //
@@ -1500,7 +1499,7 @@ float WSG50Controller::getWidth(void)
 
         // Loop Wait for Response
         //
-        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+        while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
         count++;
     }
@@ -1540,7 +1539,7 @@ float WSG50Controller::getSpeed(void)
                 return -1;
             }
 
-            boost::this_thread::sleep(boost::posix_time::millisec(20));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
             count++;
         }
@@ -1579,7 +1578,7 @@ float WSG50Controller::getForce(void)
                 return -1;
             }
 
-            boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
 
             count++;
         }
@@ -1607,7 +1606,7 @@ void WSG50Controller::getOpeningWidthUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false
@@ -1669,7 +1668,7 @@ void WSG50Controller::getForceUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false
@@ -1732,7 +1731,7 @@ void WSG50Controller::getSpeedUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false
@@ -1805,7 +1804,7 @@ void WSG50Controller::getSoftLimits(float *softLimits)
         //
         _msg.id = _GETSOFTLIMIT;  // Get Acceleration
         _msg.length = 0;
-        _msg.data = 0;
+        _msg.data = nullptr;
 
         // Send Message
         //
@@ -1816,7 +1815,7 @@ void WSG50Controller::getSoftLimits(float *softLimits)
 
         // Loop Wait for Response
         //
-        while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+        while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     // ****************************************************
@@ -1856,7 +1855,7 @@ float WSG50Controller::getForceLimit()
     //
     _msg.id = _GETFORCELIMIT;  // Get Acceleration
     _msg.length = 0;
-    _msg.data = 0;
+    _msg.data = nullptr;
 
     // Send Message
     //
@@ -1867,7 +1866,7 @@ float WSG50Controller::getForceLimit()
 
     // Loop Wait for Response
     //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     // return Acceleration
     //
@@ -1908,7 +1907,7 @@ float WSG50Controller::getAcceleration()
 
     // Loop Wait for Response
     //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     // return Acceleration
     //
@@ -1966,7 +1965,7 @@ SSTATE WSG50Controller::getSystemState(bool updateOnChangeOnly,
 
     // wait for response
     //
-    while(!_ready) boost::this_thread::sleep(boost::posix_time::millisec(20));
+    while(!_ready) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     // return state
     //
@@ -1998,7 +1997,7 @@ int WSG50Controller::getGraspingState()
                 return -1;
             }
             // sleep
-            boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
             count++;
         }
     }
@@ -2021,7 +2020,7 @@ void WSG50Controller::getGraspingStateUpdates(bool updateOnChangeOnly,
     int sleepingTimeInMs = 20;
 
     // set syst. states command
-    while(!_systStatesReadyForCommand) boost::this_thread::sleep(boost::posix_time::millisec(sleepingTimeInMs));
+    while(!_systStatesReadyForCommand) std::this_thread::sleep_for(std::chrono::milliseconds(sleepingTimeInMs));
     _systStatesReadyForCommand=false;
 
     // set flag for auto-update == true or false

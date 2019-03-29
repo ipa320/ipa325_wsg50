@@ -4,20 +4,11 @@
 #include <fstream>
 #include <stdlib.h>
 #include <ros/ros.h>
-#include <boost/thread/mutex.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/posix_time/posix_time_io.hpp>
 
 using namespace boost;
 using namespace std;
 
 #define DEBUG       3
-#define INFO        2
-#define WARN        1
-#define ERROR       0
-#define LOGLEVEL    0
-#define LOGFILEPATH "/home/rfa-fr/florian_ws/logs/comm_log.txt"
 
 #ifndef SER_MSG_NUM_HEADER_BYTES
 #define SER_MSG_NUM_HEADER_BYTES    3       //!< number of header bytes
@@ -30,8 +21,8 @@ using namespace std;
 boost::asio::io_service io_service;
 boost::asio::ip::tcp::resolver resolver(io_service);
 boost::asio::ip::tcp::socket sock(io_service);
-boost::array<char, 512> buffer;
-boost::array<std::string, 64> _splitMessages;
+std::array<char, 512> buffer;
+std::array<std::string, 64> _splitMessages;
 
 using boost::asio::ip::tcp;
 
@@ -132,9 +123,7 @@ static short _GETFINGERDATA     = 0x63;     // return the current finger data fo
 
 WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
 {
-    std::stringstream msg;
-    msg << "WSG50Communicator(): IP = " << ip.c_str() << ", PORT = " << port.c_str();
-    log(INFO, msg.str());
+    ROS_INFO_STREAM("WSG50Communicator(): IP = " << ip << ", PORT = " << port);
     // set ip and port
     //
     this->_IP = ip;
@@ -142,7 +131,6 @@ WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
 
     // initialize startup variables
     //
-    this->_connection           = NULL;
     this->_checkingConnection   = false;
     this->_respMsgDataAllocated = false;
     this->_respTCPBuffAllocated = false;
@@ -155,9 +143,7 @@ WSG50Communicator::WSG50Communicator(std::string ip, std::string port)
  */
 WSG50Communicator::~WSG50Communicator(void)
 {
-    logmsg.str("");
-    logmsg << "\n\n###########################################\n# Closing down";
-    log(WARN, logmsg.str());
+    ROS_DEBUG("Closing down");
 
     // stop and release connection
     //
@@ -173,7 +159,7 @@ void WSG50Communicator::startConnection(void)
 
     // check if connection is already set
     //
-    if(_connection != NULL) {
+    if(_connection != nullptr) {
         if(DEBUG) {
             ROS_WARN("It seems that already a connection is established!");
         }
@@ -183,7 +169,7 @@ void WSG50Communicator::startConnection(void)
     // start separate thread for the connection
     //
     this->_keep_alive = true;
-    _connection = new boost::thread(boost::bind(&WSG50Communicator::connect, this));
+    _connection = std::make_shared<std::thread>(std::bind(&WSG50Communicator::connect, this));
 }
 
 /*
@@ -222,7 +208,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 {
     TRESPONSE       responseMsg;
     unsigned char*  responseTCPBuffer;
-    unsigned char*  completeResponse = (unsigned char * ) buffer.c_array();
+    unsigned char*  completeResponse = (unsigned char * ) buffer.data();
     unsigned char*  partResponse;
     int             bufflength,
                     index, i,
@@ -253,7 +239,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 
         // convert message into array
         //
-        responseTCPBuffer = (unsigned char * ) buffer.c_array();
+        responseTCPBuffer = (unsigned char * ) buffer.data();
         this->_respTCPBuffAllocated = true;
 //        if(DEBUG) this->printHexArray(responseTCPBuffer, len);
 
@@ -690,9 +676,9 @@ bool WSG50Communicator::msg_send(TMESSAGE * msg )
 
     // Free allocated memory:
 //    if(DEBUG) std::cout << "buffer size: " << WSGSIZE << std::endl;
-    if(WSGSIZE > 0 && WSGBUF != 0) {
+    if(WSGSIZE > 0 && WSGBUF != nullptr) {
         delete[] WSGBUF;
-        WSGBUF = 0;
+        WSGBUF = nullptr;
         WSGSIZE = 0; // null pointer
     }
     return true;
@@ -749,7 +735,7 @@ unsigned char * WSG50Communicator::msg_build( TMESSAGE * msg, unsigned int *size
     if ( !buf )
     {
         *size = 0;
-        return( NULL );
+        return nullptr;
     }
 
     // Assemble the message header:
@@ -776,7 +762,7 @@ unsigned char * WSG50Communicator::msg_build( TMESSAGE * msg, unsigned int *size
 void WSG50Communicator::createDisconnectMessage(TMESSAGE * msg)
 {
     msg->id = _DISCONNECT;
-    msg->data = NULL;
+    msg->data = nullptr;
     msg->length = 0;
 }
 
@@ -824,7 +810,7 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
 
     // reset data pointer
     //
-    respMsg.data = 0;
+    respMsg.data = nullptr;
 
     // check if given tcp length is less than length given in message
     //
@@ -922,45 +908,6 @@ int WSG50Communicator::findOccurence(unsigned char *ar,
     }
     return returnValue;
 }
-
-
-// write into a log file
-//
-void WSG50Communicator::log(int logLevel, const string &msg)
-{
-    bool fileExists;
-    FILE* logFile;
-    boost::posix_time::time_facet *time = new boost::posix_time::time_facet("%H:%M:%S");
-
-    // check log-levels
-    //
-    if(logLevel <= LOGLEVEL) {
-        // check if logfile exists
-        logFile = fopen(LOGFILEPATH, "r");
-        if(logFile) {
-            fileExists = true;
-            fclose(logFile);
-        } else {
-            cout << "log-file does not exist" << endl;
-            fileExists = false;
-        }
-
-        // try opening file,
-        // if file does not exist, create new file
-        if(fileExists) {
-            logFile = fopen(LOGFILEPATH, "a+");
-        } else{
-            logFile = fopen(LOGFILEPATH, "w");
-        }
-        // create log-string
-        std::stringstream logstr;
-        logstr << boost::posix_time::second_clock::local_time();
-        logstr << "\t LOG: " <<  logLevel << "\t " << msg;
-        fprintf(logFile, "%s\n", logstr.str().c_str());
-        fclose(logFile);
-    }
-}
-
 
 void WSG50Communicator::clearIMsgBuffer() {
     int i=0;

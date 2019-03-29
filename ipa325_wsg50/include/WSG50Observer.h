@@ -1,8 +1,5 @@
 #pragma once
 
-#include "WSG50Subject.h"
-//class WSG50Subject;
-
 //! Status codes
 typedef enum
 {
@@ -83,6 +80,6 @@ typedef struct
 class WSG50Observer
 {
 public:
-    virtual void update(TRESPONSE * response);
+    virtual void update(TRESPONSE * response) = 0;
 
 };

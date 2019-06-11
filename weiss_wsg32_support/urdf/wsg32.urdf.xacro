@@ -42,7 +42,7 @@
         <joint name="${prefix}finger_right" type="prismatic">
                 <parent link="${prefix}wsg_base_frame"/>
                 <child link="${prefix}finger_right_frame"/>
-                <origin xyz=" 0 0 0" rpy="0 0 ${m_pi}"/>
+                <origin xyz=" 0 0 0" rpy="0 0 ${pi}"/>
                 <axis xyz="0 -1 0"/>
                 <limit effort="0" lower="0" upper="0.05" velocity="0.001"/>
                 <mimic joint="${prefix}finger_left"/>

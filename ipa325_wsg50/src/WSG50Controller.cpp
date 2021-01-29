@@ -217,7 +217,7 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
             {
                 // if the objects are equal, delete this object from the set
                 //
-                observerSet.erase(setIt);
+                setIt = observerSet.erase(setIt);
 
                 // if the set is empty, delete key from map
                 //

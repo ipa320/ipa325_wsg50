@@ -191,7 +191,6 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
     //
     std::map< unsigned int, std::set<WSG50RosObserver *> >::iterator it;
     std::set< WSG50RosObserver *>::iterator setIt;
-    bool objectExists = false;
 
     // Debug
     if(DEBUG) ROS_INFO("Detach Observer for ID: 0x%02X", msgId_);
@@ -217,15 +216,15 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
             {
                 // if the objects are equal, delete this object from the set
                 //
-                setIt = observerSet.erase(setIt);
-
-                // if the set is empty, delete key from map
-                //
-                if(observerSet.empty())
-                {
-                    this->_observers.erase(it);
-                }
+                setIt = observerSet.erase(setIt);                
             }
+        }
+
+        // if the set is empty, delete key from map
+        //
+        if(observerSet.empty())
+        {
+            this->_observers.erase(it);
         }
     } else {
         if(DEBUG) ROS_WARN("for this message id: 0x%02X, no Observer is registered!", msgId_);

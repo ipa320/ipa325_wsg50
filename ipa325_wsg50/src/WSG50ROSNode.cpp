@@ -311,10 +311,14 @@ public:
                     response->status_code==E_CMD_FAILED ||
                     response->status_code==E_TIMEOUT) {
                 gpserver_.setAborted(res_);
+                _controller->Detach(this, 0x43);
             } else if(response->status_code==E_SUCCESS) {
                 gpserver_.setSucceeded(res_);
+                _controller->Detach(this, 0x43);
             }
-            _controller->Detach(this, 0x43);
+            else if(response->status_code == E_CMD_PENDING) {
+                // this error is okay, do nothing
+            }            
         } else if(response->id==0x43) { // send feedback response
             fb_.force=_controller->getForce();
             fb_.speed=_controller->getSpeed();
@@ -370,10 +374,14 @@ public:
                     response->status_code==E_CMD_ABORTED ||
                     response->status_code==E_TIMEOUT) {
                 rpserver_.setAborted(res_);
+                _controller->Detach(this, 0x43);
             } else if(response->status_code==E_SUCCESS) {
                 rpserver_.setSucceeded(res_);
+                _controller->Detach(this, 0x43);
+            } else if(response->status_code == E_CMD_PENDING) {
+                // this error is okay, do nothing
             }
-            _controller->Detach(this, 0x43);
+            
         } else if(response->id==0x43) { // send feedback response
             fb_.force=_controller->getForce();
             fb_.speed=_controller->getSpeed();

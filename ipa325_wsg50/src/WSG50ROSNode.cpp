@@ -207,7 +207,7 @@ public:
 
     void doPrePositionFingers()
     {
-        if(DEBUG) ROS_INFO("\n\n##########################\n##  Prepositoin Fingers\n##########################");
+        if(DEBUG) ROS_INFO("\n\n##########################\n##  Preposition Fingers\n##########################");
         // accept new goal and get values
         //
         ipa325_wsg50::WSG50PrePositionFingersGoalConstPtr goal;
@@ -421,7 +421,7 @@ void publishStates(const std::string &jointName, const std::string &openingJoint
     _controller->getGraspingStateUpdates(false, true, updatePeriodInMs);
     std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
 
-    ROS_INFO("publishStates(): subscribed to updates of 'widht', 'speed', 'force', 'grasping state'");
+    ROS_INFO("publishStates(): subscribed to updates of 'width', 'speed', 'force', 'grasping state'");
 
     // define publishers
     //

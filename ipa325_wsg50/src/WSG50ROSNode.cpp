@@ -126,7 +126,7 @@ public:
     // Destructor
     virtual ~WSG50HomingAction(void)
     {
-        _controller->Detach(this, 0x21);
+        _controller->Detach(this, 0x20);
     }
 
     // homing action

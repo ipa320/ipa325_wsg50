@@ -477,10 +477,11 @@ void publishStates(const std::string &jointName, const std::string &openingJoint
         jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
 
         //alternatively you can also use the full gripper opening
-        jointStateMsg.name.push_back(openingJointName);
-        jointStateMsg.position.push_back(systStateMsg.width/1000.0);
-        jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
-        jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
+        // should not be published as joint state, since there is no joint with this state. Use systStateMsg if you need full opening.
+        // jointStateMsg.name.push_back(openingJointName);
+        // jointStateMsg.position.push_back(systStateMsg.width/1000.0);
+        // jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
+        // jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
 
         jointStatePublisher.publish(jointStateMsg);
 

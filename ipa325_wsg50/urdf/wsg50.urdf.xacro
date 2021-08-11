@@ -40,6 +40,28 @@
 
         <link name="${prefix}jaw_base"/>
 
+        <joint name="${prefix}jaw_left_joint" type="prismatic">
+            <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+            <parent link="${prefix}jaw_base" />
+            <child link="${prefix}jaw_left" />
+            <limit effort="80.0" lower="0" upper="0.06" velocity="0.42" />
+        </joint>
+
+        <link name="${prefix}jaw_left"/>
+
+        <joint name="${prefix}jaw_right_joint" type="prismatic">
+            <origin xyz="0.0 0.0 0.0" rpy="0 0 ${pi}" />
+            <parent link="${prefix}jaw_base" />
+            <child link="${prefix}jaw_right" />
+            <limit effort="80.0" lower="0" upper="0.06" velocity="0.42" />
+            <mimic joint="${prefix}jaw_left_joint"/>
+
+        </joint>
+
+        <link name="${prefix}jaw_right"/>
+
+
+
     </xacro:macro>
 
 </robot>

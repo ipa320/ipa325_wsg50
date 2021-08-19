@@ -32,33 +32,35 @@
             </collision>
         </link>
 
-        <joint name="${prefix}jaw_base" type="fixed" >
+        <joint name="${prefix}finger_base_joint" type="fixed" >
             <origin xyz="0.0 0.0 0.0725" rpy="0 0 0" />
             <parent link="${prefix}wsg_base" />
-            <child link="${prefix}jaw_base" />
+            <child link="${prefix}finger_base" />
         </joint>
 
-        <link name="${prefix}jaw_base"/>
+        <link name="${prefix}finger_base"/>
 
-        <joint name="${prefix}jaw_left_joint" type="prismatic">
+        <joint name="${prefix}finger_left_joint" type="prismatic">
             <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
-            <parent link="${prefix}jaw_base" />
-            <child link="${prefix}jaw_left" />
+            <parent link="${prefix}finger_base" />
+            <child link="${prefix}finger_left" />
+            <axis xyz="1 0 0"/>
             <limit effort="80.0" lower="0" upper="0.06" velocity="0.42" />
         </joint>
 
-        <link name="${prefix}jaw_left"/>
+        <link name="${prefix}finger_left"/>
 
-        <joint name="${prefix}jaw_right_joint" type="prismatic">
+        <joint name="${prefix}finger_right_joint" type="prismatic">
             <origin xyz="0.0 0.0 0.0" rpy="0 0 ${pi}" />
-            <parent link="${prefix}jaw_base" />
-            <child link="${prefix}jaw_right" />
+            <parent link="${prefix}finger_base" />
+            <child link="${prefix}finger_right" />
+            <axis xyz="1 0 0"/>
             <limit effort="80.0" lower="0" upper="0.06" velocity="0.42" />
-            <mimic joint="${prefix}jaw_left_joint"/>
+            <mimic joint="${prefix}finger_left_joint"/>
 
         </joint>
 
-        <link name="${prefix}jaw_right"/>
+        <link name="${prefix}finger_right"/>
 
 
 

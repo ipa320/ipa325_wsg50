@@ -3,7 +3,7 @@
 
     <xacro:macro name="wsg50" params="parent prefix *origin">
 
-        <joint name="{prefix}mount" type="fixed" >
+        <joint name="${prefix}mount" type="fixed" >
             <xacro:insert_block name="origin" />
             <parent link="${parent}" />
             <child link="${prefix}wsg_base" />

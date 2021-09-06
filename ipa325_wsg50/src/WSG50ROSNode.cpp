@@ -126,7 +126,7 @@ public:
     // Destructor
     virtual ~WSG50HomingAction(void)
     {
-        _controller->Detach(this, 0x21);
+        _controller->Detach(this, 0x20);
     }
 
     // homing action
@@ -207,7 +207,7 @@ public:
 
     void doPrePositionFingers()
     {
-        if(DEBUG) ROS_INFO("\n\n##########################\n##  Prepositoin Fingers\n##########################");
+        if(DEBUG) ROS_INFO("\n\n##########################\n##  Preposition Fingers\n##########################");
         // accept new goal and get values
         //
         ipa325_wsg50::WSG50PrePositionFingersGoalConstPtr goal;
@@ -311,10 +311,14 @@ public:
                     response->status_code==E_CMD_FAILED ||
                     response->status_code==E_TIMEOUT) {
                 gpserver_.setAborted(res_);
+                _controller->Detach(this, 0x43);
             } else if(response->status_code==E_SUCCESS) {
                 gpserver_.setSucceeded(res_);
+                _controller->Detach(this, 0x43);
             }
-            _controller->Detach(this, 0x43);
+            else if(response->status_code == E_CMD_PENDING) {
+                // this error is okay, do nothing
+            }            
         } else if(response->id==0x43) { // send feedback response
             fb_.force=_controller->getForce();
             fb_.speed=_controller->getSpeed();
@@ -370,10 +374,14 @@ public:
                     response->status_code==E_CMD_ABORTED ||
                     response->status_code==E_TIMEOUT) {
                 rpserver_.setAborted(res_);
+                _controller->Detach(this, 0x43);
             } else if(response->status_code==E_SUCCESS) {
                 rpserver_.setSucceeded(res_);
+                _controller->Detach(this, 0x43);
+            } else if(response->status_code == E_CMD_PENDING) {
+                // this error is okay, do nothing
             }
-            _controller->Detach(this, 0x43);
+            
         } else if(response->id==0x43) { // send feedback response
             fb_.force=_controller->getForce();
             fb_.speed=_controller->getSpeed();
@@ -413,7 +421,7 @@ void publishStates(const std::string &jointName, const std::string &openingJoint
     _controller->getGraspingStateUpdates(false, true, updatePeriodInMs);
     std::this_thread::sleep_for(std::chrono::milliseconds((TIMEFORWAITINGLOOP*5)));
 
-    ROS_INFO("publishStates(): subscribed to updates of 'widht', 'speed', 'force', 'grasping state'");
+    ROS_INFO("publishStates(): subscribed to updates of 'width', 'speed', 'force', 'grasping state'");
 
     // define publishers
     //

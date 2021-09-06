@@ -204,8 +204,8 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
         std::set< WSG50RosObserver *> observerSet = it->second;
 
         // loop through set and compare the objects
-        //
-        for(setIt = observerSet.begin(); setIt != observerSet.end(); ++setIt)
+        // see https://stackoverflow.com/a/2874533/4270676 how to correctly erase an object while iterating 
+        for(setIt = observerSet.begin(); setIt != observerSet.end(); )
         {
             // get the object from the current position
             WSG50RosObserver * tmpObserver_ = *setIt;
@@ -216,7 +216,10 @@ void WSG50Controller::Detach(WSG50RosObserver *observer_, unsigned int msgId_)
             {
                 // if the objects are equal, delete this object from the set
                 //
-                setIt = observerSet.erase(setIt);                
+                setIt = observerSet.erase(setIt);
+            }
+            else{
+                ++setIt;
             }
         }
 

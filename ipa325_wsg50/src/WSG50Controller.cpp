@@ -18,9 +18,9 @@
  * ###   Define Specific Values for Schung WSG50-100 Gripper  #
  * ############################################################
  */
-#ifndef MAXWIDTH
-#define MAXWIDTH 110.0
-#endif
+// #ifndef MAXWIDTH
+// #define MAXWIDTH 110.0 -> use parameter instead to allow using wsg50-210 as well
+// #endif
 
 #ifndef MINWIDTH
 #define MINWIDTH 0.0
@@ -78,6 +78,7 @@ WSG50Controller::WSG50Controller(void)
     //
     this->_IP = "192.168.1.20";
     this->_PORT = "1000";
+    this->_MaxWidth = 110.0;
 
     // connect
     //
@@ -101,11 +102,11 @@ WSG50Controller::~WSG50Controller(void)
  *      string ip = IP of the gripper
  *      string port = Port to connect with the gripper
  */
-WSG50Controller::WSG50Controller(std::string ip, std::string port)
+WSG50Controller::WSG50Controller(std::string ip, std::string port, double max_width)
 {
     this->_IP = ip;
     this->_PORT = port;
-
+    this->_MaxWidth = max_width;
     this->setupConnection();
 }
 
@@ -248,7 +249,6 @@ void WSG50Controller::setupConnection()
     // ****************************************
     // initialize max, min and default values
     //
-    this->_MaxWidth         = MAXWIDTH;
     this->_MinWidth         = MINWIDTH;
     this->_MaxSpeed         = MAXSPEED;
     this->_MinSpeed         = MINSPEED;
@@ -257,7 +257,7 @@ void WSG50Controller::setupConnection()
     this->_MaxForceLimit    = MAXFORCELIMIT;
     this->_MinForceLimit    = MINFORCELIMIT;
     this->_softLimitMinus   = MINWIDTH;
-    this->_softLimitPlus    = MAXWIDTH;
+    this->_softLimitPlus    = this->_MaxWidth;
     this->_acceleration     = DEFAULTACCELERATION;      // mm/s²
     this->_speed            = DEFAULTSPEED;             // mm/s
     this->_forceLimit       = DEFAULTFORCELIMIT;        // N
@@ -541,7 +541,7 @@ void WSG50Controller::updateHandler(void)
             ROS_INFO("soft limits cleared successfully.");
             _softLimitsSet = false;
             _softLimitMinus = MINWIDTH;
-            _softLimitPlus = MAXWIDTH;
+            _softLimitPlus = this->_MaxWidth;
         } else if(resp.status_code == E_NO_PARAM_EXPECTED) {
             ROS_ERROR("CLEAR SOFT LIMITS response: No Parameter Expected!");
         } else {

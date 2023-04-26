@@ -41,6 +41,7 @@
 
 // Gripper Default Values
 //
+#define MAXWIDTH 110.0 
 #define FORCELIMIT  10          // in Newton
 #define ACCELERATION 200        // in mm/s²
 
@@ -637,13 +638,15 @@ int main(int argc, char** argv)
     //
     std::string ip, port;
     std::string jointName, openingJointName;
+    double max_width;
     ros::param::param<std::string>("~ip", ip, DEFAULTIP);
     ros::param::param<std::string>("~port", port, DEFAULTPORT);
     ros::param::param<std::string>("~joint_name", jointName, DEFAULTJOINTNAME);
     ros::param::param<std::string>("~opening_joint_name", openingJointName, DEFAULTOPENINGJOINTNAME);
+    ros::param::param<double>("~max_width", max_width, MAXWIDTH);
     ROS_INFO_STREAM("Connecting to " << ip << ":" << port << "...");
     try {
-        _controller = new WSG50Controller(ip, port);
+        _controller = new WSG50Controller(ip, port, max_width);
     } catch (int e) {
         ROS_ERROR("An exception occured while initializing the WSG50Controller!\nError: %d\nAborting further processing", e);
         return 0;

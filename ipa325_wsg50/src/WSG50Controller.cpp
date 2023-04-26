@@ -10,7 +10,7 @@
  * ###   Define Default Values   #############
  * ###########################################
  */
-#define DEBUG true
+#define DEBUG false
 
 #define TIMEOUT     1       // sec
 

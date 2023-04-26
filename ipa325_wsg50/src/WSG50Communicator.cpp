@@ -8,7 +8,7 @@
 using namespace boost;
 using namespace std;
 
-#define DEBUG       3
+#define DEBUG       0
 
 #ifndef SER_MSG_NUM_HEADER_BYTES
 #define SER_MSG_NUM_HEADER_BYTES    3       //!< number of header bytes
@@ -370,7 +370,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
 //            ROS_ERROR("response message length = %d", responseMsg.length);
             // check if response-message-length == -1, then there was an error creating the message
             if(responseMsg.length == -1) {
-                ROS_ERROR("could not create TRESPONSE. continue");
+                ROS_DEBUG("could not create TRESPONSE. continue");
 
                 // clear buffer
                 //
@@ -816,8 +816,8 @@ TRESPONSE WSG50Communicator::createTRESPONSE(unsigned char * data, size_t TCPPac
     //
     if((int) respMsg.length != ((int) (TCPPacketLength - 10)))
     {
-        ROS_ERROR("1 Length of response TCP-message does not match announced data-length!");
-        ROS_ERROR("2 actual length = %d, announced data-length = %d", ((int) TCPPacketLength -10), (int) respMsg.length);
+        ROS_DEBUG("1 Length of response TCP-message does not match announced data-length!");
+        ROS_DEBUG("2 actual length = %d, announced data-length = %d", ((int) TCPPacketLength -10), (int) respMsg.length);
         if(DEBUG) printHexArray(data, TCPPacketLength);
         respMsg.length = -1;
         return respMsg;

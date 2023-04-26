@@ -29,11 +29,8 @@
 #include <ipa325_wsg50/setAcceleration.h>
 #include <ipa325_wsg50/setForceLimit.h>
 #include <ipa325_wsg50/setSoftLimits.h>
-#include <ipa325_wsg50/clearSoftLimits.h>
 #include <ipa325_wsg50/tareForceSensor.h>
-#include <ipa325_wsg50/stop.h>
-#include <ipa325_wsg50/fastStop.h>
-#include <ipa325_wsg50/ackFastStop.h>
+#include <std_srvs/Empty.h>
 
 // Programm Control
 //
@@ -544,8 +541,8 @@ bool setSoftLimitsService(ipa325_wsg50::setSoftLimits::Request &req,
 // this will set the minus and plus soft-limits of the schunk gripper
 // there is no response code, since the values are published in the system states message
 //
-bool clearSoftLimitsService(ipa325_wsg50::clearSoftLimits::Request &req,
-                            ipa325_wsg50::clearSoftLimits::Response &resp)
+bool clearSoftLimitsService(std_srvs::Empty::Request &req,
+                            std_srvs::Empty::Response &resp)
 {
     ROS_INFO("Clear Soft Limits service called");
 
@@ -576,8 +573,8 @@ bool setForceLimitService(ipa325_wsg50::setForceLimit::Request &req,
 // ros service: stop
 // this will stop gripper movements
 //
-bool stopService(ipa325_wsg50::stop::Request &req,
-                 ipa325_wsg50::stop::Response &resp)
+bool stopService(std_srvs::Empty::Request &req,
+                 std_srvs::Empty::Response &resp)
 {
     ROS_INFO("STOP service called");
 
@@ -593,8 +590,8 @@ bool stopService(ipa325_wsg50::stop::Request &req,
 // in this state the gripper will not accept any other movement orders until
 // "acknowledgeFastStop" is called!
 //
-bool fastStopService(ipa325_wsg50::stop::Request &req,
-                 ipa325_wsg50::stop::Response &resp)
+bool fastStopService(std_srvs::Empty::Request &req,
+                 std_srvs::Empty::Response &resp)
 {
     ROS_INFO("FASTSTOP service called");
 
@@ -608,8 +605,8 @@ bool fastStopService(ipa325_wsg50::stop::Request &req,
 // ros service: acknowledge fast stop
 // return gripper into idle state where new commands can be sent.
 //
-bool acknowledgeFastStopService(ipa325_wsg50::stop::Request &req,
-                 ipa325_wsg50::stop::Response &resp)
+bool acknowledgeFastStopService(std_srvs::Empty::Request &req,
+                std_srvs::Empty::Response &resp)
 {
     ROS_INFO("Acknowledge fast stop service called");
 

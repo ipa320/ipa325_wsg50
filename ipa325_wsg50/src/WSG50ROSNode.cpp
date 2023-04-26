@@ -309,6 +309,7 @@ public:
                     response->status_code==E_RANGE_ERROR ||
                     response->status_code==E_CMD_ABORTED ||
                     response->status_code==E_CMD_FAILED ||
+                    response->status_code==E_AXIS_BLOCKED ||
                     response->status_code==E_TIMEOUT) {
                 gpserver_.setAborted(res_);
                 _controller->Detach(this, 0x43);

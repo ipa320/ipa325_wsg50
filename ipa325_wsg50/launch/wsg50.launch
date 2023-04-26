@@ -1,8 +1,15 @@
 <?xml version="1.0"?>
 
 <launch>
-    <node name="ipa325_wsg50" pkg="ipa325_wsg50" type="schunk_gripper">
+
+    <arg name="sim" default="False" />
+
+    <node name="ipa325_wsg50" pkg="ipa325_wsg50" type="schunk_gripper" output="screen" unless="$(arg sim)">
         <param name="ip" value="192.168.0.20"/>
         <param name="port" value="1000"/>
+    </node>
+
+    <!-- WSG 50Simulator -->
+    <node name="ipa325_wsg50_sim" pkg="wsg_simulator" type="wsg_simulator_node" output="screen" if="$(arg sim)">
     </node>
 </launch>

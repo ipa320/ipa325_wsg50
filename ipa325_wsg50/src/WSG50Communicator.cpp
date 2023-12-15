@@ -235,7 +235,7 @@ void WSG50Communicator::read_handler(const boost::system::error_code &ec,
         // read next data packet from tcp socket
         //
         sock.async_read_some(boost::asio::buffer( buffer ),
-                             boost::bind(&WSG50Communicator::read_handler, this, _1, _2));
+                             boost::bind(&WSG50Communicator::read_handler, this, boost::placeholders::_1, boost::placeholders::_2));
 
         // convert message into array
         //
@@ -449,7 +449,7 @@ void WSG50Communicator::connect_handler(const boost::system::error_code &ec)
         // bind the async_read to the read_handler function
         //
         sock.async_read_some(boost::asio::buffer( buffer ),
-                             boost::bind(&WSG50Communicator::read_handler, this, _1, _2));
+                             boost::bind(&WSG50Communicator::read_handler, this, boost::placeholders::_1, boost::placeholders::_2));
     }
 }
 
@@ -463,7 +463,7 @@ void WSG50Communicator::resolve_handler(const boost::system::error_code &ec,
     {
         // call connection handler
         //
-        sock.async_connect(*it, boost::bind(&WSG50Communicator::connect_handler, this, _1));
+        sock.async_connect(*it, boost::bind(&WSG50Communicator::connect_handler, this, boost::placeholders::_1));
     }
 }
 
@@ -476,7 +476,7 @@ void WSG50Communicator::connect()
     // use asynchroneous connect and resolve / read handlers
     //
     boost::asio::ip::tcp::resolver::query query(this->_IP, this->_PORT);
-    resolver.async_resolve(query, boost::bind(&WSG50Communicator::resolve_handler, this, _1, _2));
+    resolver.async_resolve(query, boost::bind(&WSG50Communicator::resolve_handler, this, boost::placeholders::_1, boost::placeholders::_2));
 
     // start service
     //

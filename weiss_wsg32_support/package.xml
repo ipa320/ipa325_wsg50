@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>weiss_wsg32_support</name>
   <version>0.0.1</version>
   <description>The weiss/schunk wsg32 gripper support package</description>
@@ -40,7 +40,7 @@
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
 
-  <run_depend>ipa325_wsg50</run_depend>
+  <exec_depend>ipa325_wsg50</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

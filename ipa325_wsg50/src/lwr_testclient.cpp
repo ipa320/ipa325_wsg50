@@ -23,11 +23,8 @@
 #include <ipa325_wsg50/setAcceleration.h>
 #include <ipa325_wsg50/setForceLimit.h>
 #include <ipa325_wsg50/setSoftLimits.h>
-#include <ipa325_wsg50/clearSoftLimits.h>
 #include <ipa325_wsg50/tareForceSensor.h>
-#include <ipa325_wsg50/stop.h>
-#include <ipa325_wsg50/fastStop.h>
-#include <ipa325_wsg50/ackFastStop.h>
+#include <std_srvs/Empty.h>
 
 // contents
 //
@@ -198,8 +195,8 @@ int main(int argc, char **argv)
     //
     ROS_INFO("Wait for x seconds");
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    ros::ServiceClient clearSoftLimitsClient = node.serviceClient<ipa325_wsg50::clearSoftLimits>("ClearSoftLimits");
-    ipa325_wsg50::clearSoftLimits cslMsg;
+    ros::ServiceClient clearSoftLimitsClient = node.serviceClient<std_srvs::Empty>("ClearSoftLimits");
+    std_srvs::Empty cslMsg;
     if(clearSoftLimitsClient.call(cslMsg))
         ROS_INFO("Clear soft limits service has returned successfull");
     else {
@@ -268,7 +265,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // send action goal
+    // send action goalipa325_wsg50::ackFastStop
     ipa325_wsg50::WSG50PrePositionFingersGoal goal2;
     goal2.stopOnBlock = true;
     goal2.width = 55.0;
@@ -286,8 +283,8 @@ int main(int argc, char **argv)
         if(count == 1000) { // wait 1 sec
             // send stop message
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            ros::ServiceClient stopClient = node.serviceClient<ipa325_wsg50::stop>("Stop");
-            ipa325_wsg50::stop stopMsg;
+            ros::ServiceClient stopClient = node.serviceClient<std_srvs::Empty>("Stop");
+            std_srvs::Empty stopMsg;
             ROS_INFO("send stop message");
             if(stopClient.call(stopMsg))
                 ROS_INFO("Stop called successfully");
@@ -324,8 +321,8 @@ int main(int argc, char **argv)
         if(count == 1000) { // wait 1 sec
             // send fast stop message
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            ros::ServiceClient fastStopClient = node.serviceClient<ipa325_wsg50::fastStop>("FastStop");
-            ipa325_wsg50::stop fastStopMsg;
+            ros::ServiceClient fastStopClient = node.serviceClient<std_srvs::Empty>("FastStop");
+            std_srvs::Empty fastStopMsg;
             ROS_INFO("send stop message");
             if(fastStopClient.call(fastStopMsg))
                 ROS_INFO("FastStop called successfully");
@@ -342,8 +339,8 @@ int main(int argc, char **argv)
     //
     std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // wait 2 sec
 
-    ros::ServiceClient ackFastStopClient = node.serviceClient<ipa325_wsg50::ackFastStop>("AcknowledgeFastStop");
-    ipa325_wsg50::ackFastStop ackMsg;
+    ros::ServiceClient ackFastStopClient = node.serviceClient<std_srvs::Empty>("AcknowledgeFastStop");
+    std_srvs::Empty ackMsg;
     ROS_INFO("Acknowledge Fast Stop");
     if(ackFastStopClient.call(ackMsg))
         ROS_INFO("acknowledgeFastStop successfully called!");

@@ -20,6 +20,10 @@ LIAA received funding from the European Union’s Seventh Framework Programme fo
 
 Project runtime: 02.09.2013 – 31.08.2017.
 
+## Prerequisites
+
+On the WSG 50 Control panel (open WSG ip in browser, without https), go to `Settings/Command Interface` and ensure that "Use text based interface" is disabled.
+
 ## ROS-Node Documentation
 Special Thanks to Mainauthor **Florian Röser**
 Current maintainer **Lorenz Halt**

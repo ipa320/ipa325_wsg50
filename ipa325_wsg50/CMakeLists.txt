@@ -16,6 +16,7 @@ find_package(catkin
     sensor_msgs
     trajectory_msgs
     message_generation
+    std_srvs
 ##  additional packages
 )
 
@@ -60,14 +61,10 @@ add_message_files(
 add_service_files(
   FILES
 #    WSG50Disconnect.srv
-    clearSoftLimits.srv
     setAcceleration.srv
     setForceLimit.srv
     setSoftLimits.srv
     tareForceSensor.srv
-    stop.srv
-    fastStop.srv
-    ackFastStop.srv
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -89,10 +86,11 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES kuka_lwr
+  INCLUDE_DIRS include
+ LIBRARIES wsg50_ros
   CATKIN_DEPENDS
     roscpp
+    actionlib
     actionlib_msgs
     trajectory_msgs
     std_msgs
@@ -119,9 +117,20 @@ include_directories(
 #)
 
 ## Declare a cpp library
-# add_library(kuka_lwr
-#   src/${PROJECT_NAME}/kuka_lwr.cpp
-# )
+add_library(wsg50_ros
+  src/WSG50Subject.cpp
+    src/WSG50Controller.cpp
+    src/WSG50Communicator.cpp
+    src/WSG50ROSNode.cpp
+    src/WSG50RosObserver.cpp
+    src/WSG50RosSubject.cpp
+)
+add_dependencies(wsg50_ros ${PROJECT_NAME}_gencpp)
+target_link_libraries(wsg50_ros
+  ${catkin_LIBRARIES}
+  pthread
+  rt ## clock_gettime
+)
 
 ## Declare a cpp executable
 add_executable(schunk_testclient src/lwr_testclient.cpp)

@@ -29,11 +29,8 @@
 #include <ipa325_wsg50/setAcceleration.h>
 #include <ipa325_wsg50/setForceLimit.h>
 #include <ipa325_wsg50/setSoftLimits.h>
-#include <ipa325_wsg50/clearSoftLimits.h>
 #include <ipa325_wsg50/tareForceSensor.h>
-#include <ipa325_wsg50/stop.h>
-#include <ipa325_wsg50/fastStop.h>
-#include <ipa325_wsg50/ackFastStop.h>
+#include <std_srvs/Empty.h>
 
 // Programm Control
 //
@@ -44,6 +41,7 @@
 
 // Gripper Default Values
 //
+#define MAXWIDTH 110.0 
 #define FORCELIMIT  10          // in Newton
 #define ACCELERATION 200        // in mm/s²
 
@@ -309,6 +307,7 @@ public:
                     response->status_code==E_RANGE_ERROR ||
                     response->status_code==E_CMD_ABORTED ||
                     response->status_code==E_CMD_FAILED ||
+                    response->status_code==E_AXIS_BLOCKED ||
                     response->status_code==E_TIMEOUT) {
                 gpserver_.setAborted(res_);
                 _controller->Detach(this, 0x43);
@@ -479,10 +478,11 @@ void publishStates(const std::string &jointName, const std::string &openingJoint
         jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
 
         //alternatively you can also use the full gripper opening
-        jointStateMsg.name.push_back(openingJointName);
-        jointStateMsg.position.push_back(systStateMsg.width/1000.0);
-        jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
-        jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
+        // should not be published as joint state, since there is no joint with this state. Use systStateMsg if you need full opening.
+        // jointStateMsg.name.push_back(openingJointName);
+        // jointStateMsg.position.push_back(systStateMsg.width/1000.0);
+        // jointStateMsg.velocity.push_back(systStateMsg.speed/1000.0);
+        // jointStateMsg.effort.push_back(systStateMsg.force/1000.0);
 
         jointStatePublisher.publish(jointStateMsg);
 
@@ -543,8 +543,8 @@ bool setSoftLimitsService(ipa325_wsg50::setSoftLimits::Request &req,
 // this will set the minus and plus soft-limits of the schunk gripper
 // there is no response code, since the values are published in the system states message
 //
-bool clearSoftLimitsService(ipa325_wsg50::clearSoftLimits::Request &req,
-                            ipa325_wsg50::clearSoftLimits::Response &resp)
+bool clearSoftLimitsService(std_srvs::Empty::Request &req,
+                            std_srvs::Empty::Response &resp)
 {
     ROS_INFO("Clear Soft Limits service called");
 
@@ -575,8 +575,8 @@ bool setForceLimitService(ipa325_wsg50::setForceLimit::Request &req,
 // ros service: stop
 // this will stop gripper movements
 //
-bool stopService(ipa325_wsg50::stop::Request &req,
-                 ipa325_wsg50::stop::Response &resp)
+bool stopService(std_srvs::Empty::Request &req,
+                 std_srvs::Empty::Response &resp)
 {
     ROS_INFO("STOP service called");
 
@@ -592,8 +592,8 @@ bool stopService(ipa325_wsg50::stop::Request &req,
 // in this state the gripper will not accept any other movement orders until
 // "acknowledgeFastStop" is called!
 //
-bool fastStopService(ipa325_wsg50::stop::Request &req,
-                 ipa325_wsg50::stop::Response &resp)
+bool fastStopService(std_srvs::Empty::Request &req,
+                 std_srvs::Empty::Response &resp)
 {
     ROS_INFO("FASTSTOP service called");
 
@@ -607,8 +607,8 @@ bool fastStopService(ipa325_wsg50::stop::Request &req,
 // ros service: acknowledge fast stop
 // return gripper into idle state where new commands can be sent.
 //
-bool acknowledgeFastStopService(ipa325_wsg50::stop::Request &req,
-                 ipa325_wsg50::stop::Response &resp)
+bool acknowledgeFastStopService(std_srvs::Empty::Request &req,
+                std_srvs::Empty::Response &resp)
 {
     ROS_INFO("Acknowledge fast stop service called");
 
@@ -638,13 +638,15 @@ int main(int argc, char** argv)
     //
     std::string ip, port;
     std::string jointName, openingJointName;
+    double max_width;
     ros::param::param<std::string>("~ip", ip, DEFAULTIP);
     ros::param::param<std::string>("~port", port, DEFAULTPORT);
     ros::param::param<std::string>("~joint_name", jointName, DEFAULTJOINTNAME);
     ros::param::param<std::string>("~opening_joint_name", openingJointName, DEFAULTOPENINGJOINTNAME);
+    ros::param::param<double>("~max_width", max_width, MAXWIDTH);
     ROS_INFO_STREAM("Connecting to " << ip << ":" << port << "...");
     try {
-        _controller = new WSG50Controller(ip, port);
+        _controller = new WSG50Controller(ip, port, max_width);
     } catch (int e) {
         ROS_ERROR("An exception occured while initializing the WSG50Controller!\nError: %d\nAborting further processing", e);
         return 0;

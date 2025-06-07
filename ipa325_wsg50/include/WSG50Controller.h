@@ -100,7 +100,7 @@ public:
     // Connection Manager
     //
     WSG50Controller(void);
-    WSG50Controller(std::string ip, std::string port);
+    WSG50Controller(std::string ip, std::string port, double max_width);
     virtual ~WSG50Controller(void);
 
 

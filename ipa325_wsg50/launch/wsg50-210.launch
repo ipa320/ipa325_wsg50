@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+
+<launch>
+    <node name="ipa325_wsg50" pkg="ipa325_wsg50" type="schunk_gripper" output="screen">
+        <param name="ip" value="192.168.0.20"/>
+        <param name="port" value="1000"/>
+        <param name="max_width" value="210.0" />
+    </node>
+</launch>

@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>weiss_wsg32_support</name>
   <version>0.0.1</version>
   <description>The weiss/schunk wsg32 gripper support package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
-  <maintainer email="simon.schmeisser@isys-vision.de">Simon Schmeisser</maintainer>
+  <maintainer email="simon.schmeisser@optonic.com">Simon Schmeisser</maintainer>
   <maintainer email="lorenz.halt@ipa.fraunhofer.de">Lorenz Halt</maintainer>
 
 
@@ -24,7 +24,7 @@
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
   <!-- Authors do not have to be maintianers, but could be -->
   <!-- Example: -->
-  <author email="simon.schmeisser@isys-vision.de">Simon Schmeisser</author>
+  <author email="simon.schmeisser@optonic.com">Simon Schmeisser</author>
 
 
   <!-- The *_depend tags are used to specify dependencies -->
@@ -40,7 +40,7 @@
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
 
-  <run_depend>ipa325_wsg50</run_depend>
+  <exec_depend>ipa325_wsg50</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
